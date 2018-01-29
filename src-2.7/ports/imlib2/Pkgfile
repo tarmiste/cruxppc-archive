@@ -1,0 +1,27 @@
+# Description: Powerful image loading and rendering library
+# URL: http://www.enlightenment.org/
+# Maintainer: acrux, acrux at linuxmail dot com
+# Depends on: libpng, libjpeg, freetype, libungif, libtiff, xorg-libsm, xorg-libxext
+# PPC!=
+
+name=imlib2
+version=1.4.4
+release=1
+source=(http://download.sourceforge.net/enlightenment/$name\_loaders-$version.tar.bz2 \
+	http://download.sourceforge.net/enlightenment/$name-$version.tar.bz2)
+
+build() {
+	
+	(cd $name\_loaders-$version
+        ./configure --prefix=/usr --with-gnu-ld
+        make
+        make DESTDIR=$PKG install)
+
+	cd $name-$version
+
+	./configure --prefix=/usr \
+	--with-gnu-ld --without-id3
+
+	make
+	make DESTDIR=$PKG install
+}

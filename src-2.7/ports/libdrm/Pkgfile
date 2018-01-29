@@ -1,0 +1,24 @@
+# Description: Userspace interface to kernel DRM services
+# URL: http://dri.freedesktop.org/
+# Maintainer: acrux, acrux at linuxmail dot org
+# Depends on: libpthread-stubs
+# PPC!=:
+
+name=libdrm
+version=2.4.23
+release=1
+source=(http://dri.freedesktop.org/$name/$name-$version.tar.bz2 \
+	pci0001.patch)
+
+build() {
+    cd $name-$version
+	# if your videocard is on PCI:0001 bus (e.g. on Pegasos2)
+	# patch -p0 -i $SRC/pci0001.patch
+
+	./configure --prefix=/usr --with-gnu-ld \
+	--disable-intel --enable-udev \
+	--enable-nouveau-experimental-api
+
+    make
+    make DESTDIR=$PKG install
+}

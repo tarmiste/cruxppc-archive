@@ -1,0 +1,45 @@
+diff -ur cloog-ppl-0.15.10.orig/Makefile.in cloog-ppl-0.15.10/Makefile.in
+--- cloog-ppl-0.15.10.orig/Makefile.in	Sat Aug 28 04:14:32 2010
++++ cloog-ppl-0.15.10/Makefile.in	Thu Sep  2 16:12:37 2010
+@@ -87,10 +87,7 @@
+ 	autoconf/texinfo.tex
+ subdir = .
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
+-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
+-	$(top_srcdir)/configure.in
++am__aclocal_m4_deps = $(top_srcdir)/configure.in
+ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
+ 	$(ACLOCAL_M4)
+ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
+diff -ur cloog-ppl-0.15.10.orig/doc/Makefile.in cloog-ppl-0.15.10/doc/Makefile.in
+--- cloog-ppl-0.15.10.orig/doc/Makefile.in	Sat Aug 28 04:14:32 2010
++++ cloog-ppl-0.15.10/doc/Makefile.in	Thu Sep  2 16:12:53 2010
+@@ -37,10 +37,7 @@
+ subdir = doc
+ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in TODO
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
+-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
+-	$(top_srcdir)/configure.in
++am__aclocal_m4_deps = $(top_srcdir)/configure.in
+ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
+ 	$(ACLOCAL_M4)
+ mkinstalldirs = $(SHELL) $(top_srcdir)/autoconf/mkinstalldirs
+diff -ur cloog-ppl-0.15.10.orig/test/Makefile.in cloog-ppl-0.15.10/test/Makefile.in
+--- cloog-ppl-0.15.10.orig/test/Makefile.in	Sat Aug 28 04:14:32 2010
++++ cloog-ppl-0.15.10/test/Makefile.in	Thu Sep  2 16:13:11 2010
+@@ -75,10 +75,7 @@
+ subdir = test
+ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+-am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
+-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
+-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
+-	$(top_srcdir)/configure.in
++am__aclocal_m4_deps = $(top_srcdir)/configure.in
+ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
+ 	$(ACLOCAL_M4)
+ mkinstalldirs = $(SHELL) $(top_srcdir)/autoconf/mkinstalldirs

@@ -1,0 +1,110 @@
+# Description: The C library used in the GNU system
+# URL: http://www.gnu.org/software/libc/
+# Maintainer: CRUX PPC - http://cruxppc.org/
+# Depends on: tzdata
+# PPC!=
+
+name=glibc
+version=2.16.0
+release=2
+source=(http://ftp.gnu.org/gnu/glibc/$name-$version.tar.xz \
+	http://ftp.gnu.org/gnu/glibc/$name-ports-$version.tar.xz \
+	ftp://ftp.cruxppc.org/cruxppc/distfiles/3.0/kernel-headers-3.2.1.tar.xz \
+	hosts resolv.conf nsswitch.conf host.conf ld.so.conf \
+	glibc-2.15-fix-res_query-assert.patch \
+        glibc-2.16-rpcgen-cpp-path.patch \
+        glibc-2.16-strtod-overflow.patch \
+        glibc-2.16-detect-fma.patch \
+	glibc-2.16-avoid-parse-argument-as-multibyte.patch \
+        glibc-2.16-glob-use-size_t.patch \
+	glibc-regexp_buffer_overrun.patch \
+	glibc-2.16-fix-missing-mcount-powerpc32.patch \
+	glibc-2.16-fix-cacheline-ppc405.patch \
+        glibc-rpc-bootstrap.patch)
+
+build() {
+        # you have the chance to build glibc with some optimized routines
+        # supported values for _CPU are:
+	# 405, 440, 464, 476
+        # cell, a2, 970, power4, power5, power5+, power6, power6x, power7
+        _CPU=""
+        if [ "${_CPU}" != "" ]; then
+        local CONF="--with-cpu=${_CPU}"
+        fi
+
+        # install build kernel headers
+        mkdir $PKG/usr
+        cp -r kernel-headers-3.2.1/include $PKG/usr
+        chown root:root $PKG/usr
+
+	mv $name-ports-$version $name-$version/ports
+	
+	#patch -p1 -d $name-$version -i $SRC/glibc-rpc-bootstrap.patch
+
+        patch -p1 -d $name-$version -i $SRC/glibc-2.15-fix-res_query-assert.patch
+        patch -p1 -d $name-$version -i $SRC/glibc-2.16-rpcgen-cpp-path.patch
+        patch -p1 -d $name-$version -i $SRC/glibc-2.16-strtod-overflow.patch
+        patch -p1 -d $name-$version -i $SRC/glibc-2.16-detect-fma.patch
+        patch -p1 -d $name-$version -i $SRC/glibc-2.16-glob-use-size_t.patch
+	patch -p1 -d $name-$version -i $SRC/glibc-2.16-avoid-parse-argument-as-multibyte.patch
+	patch -p1 -d $name-$version -i $SRC/glibc-regexp_buffer_overrun.patch
+
+	patch -p1 -d $name-$version -i $SRC/glibc-2.16-fix-missing-mcount-powerpc32.patch
+	patch -p1 -d $name-$version -i $SRC/glibc-2.16-fix-cacheline-ppc405.patch
+
+
+        if [ "$HOSTTYPE" == "powerpc64" ]; then
+                mkdir build64
+                cd build64
+                echo "slibdir=/lib64" > configparms
+                echo "sbindir=/usr/sbin64" >> configparms
+                echo "bindir=/usr/bin64" >> configparms
+                CC="gcc -m64" ../$name-$version/configure --prefix=/usr $CONF \
+                                                --libexecdir=/usr/lib64 \
+                                                --libdir=/usr/lib64 \
+                                                --with-headers=$PKG/usr/include \
+                                                --with-tls \
+                                                --enable-kernel=2.6.36 \
+                                                --enable-add-ons \
+						--enable-stackguard-randomization \
+		                                --enable-obsolete-rpc \
+                                                --disable-profile \
+                                                --without-gd \
+                                                --host=powerpc64-unknown-linux-gnu
+                make
+		#make -k check
+                make install_root=$PKG install
+
+                cd ..
+        fi
+
+        mkdir build32
+        cd build32
+        echo "cross-compiling = no" > configparms
+        echo "slibdir=/lib" >> configparms
+        CC="gcc -m32" ../$name-$version/configure --prefix=/usr $CONF \
+                                --libexecdir=/usr/lib \
+                                --libdir=/usr/lib \
+                                --with-headers=$PKG/usr/include \
+                                --with-tls \
+                                --enable-kernel=2.6.36 \
+                                --enable-add-ons \
+				--enable-stackguard-randomization \
+                                --enable-obsolete-rpc \
+                                --disable-profile \
+                                --without-gd \
+                                --host=powerpc-unknown-linux-gnu
+
+        make
+	#make -k check
+        make install_root=$PKG install
+
+        cp ../{hosts,resolv.conf,nsswitch.conf,host.conf,ld.so.conf} $PKG/etc
+        ln -sf ../usr/share/zoneinfo/UTC $PKG/etc/localtime
+        mkdir -p $PKG/etc/ld.so.conf.d $PKG/usr/lib/locale
+        touch $PKG/etc/ld.so.cache
+
+        rm -rf $PKG/usr/share/{info,locale} \
+		$PKG/usr/bin/tzselect \
+        	$PKG/usr/sbin/z{dump,ic}
+}

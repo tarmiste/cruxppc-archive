@@ -1,0 +1,13 @@
+--- a/conf/ilenia.conf.orig	2011-02-05 11:57:38.000000000 +0100
++++ b/conf/ilenia.conf	2011-02-05 11:59:26.000000000 +0100
+@@ -5,8 +5,8 @@
+ [ilenia]
+ # POST_PKGADD = ""             # The commands to executed after a pkgadd
+ # NOT_FOUND_POLICY = "Ask"     # Ask, Stop, Nevermind
+-# REPOSITORIES_HIERARCHY = ""  # Example: "core opt xorg"
+-# NEVER_INSTALL = ""	       # Example: "vim kdelibs"
++REPOSITORIES_HIERARCHY = "ppc/core ppc/opt ppc/xorg ppc/contrib"
++NEVER_INSTALL = "glibc-32 bin86 nasm xorg-xf86-video-vesa yasm kqemu"
+ # ASK_FOR_UPDATE = "Yes"       # Yes, No
+ # ENABLE_COLORS = "Yes"        # Yes, No
+ # VERBOSE = "No"  	       # Yes, No

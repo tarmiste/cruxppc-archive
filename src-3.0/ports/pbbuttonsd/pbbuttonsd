@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# /etc/rc.d/pbbuttonsd: start/stop pbbuttonsd daemon
+#
+
+case $1 in
+start)
+	/usr/bin/pbbuttonsd --detach=/var/run/pbbuttonsd.pid
+	;;
+stop)
+	kill `head -1 /var/run/pbbuttonsd.pid`
+	;;
+restart)
+	$0 stop
+	sleep 2
+	$0 start
+	;;
+*)
+	echo "usage: $0 [start|stop|restart]"
+	;;
+esac
+
+# End of file

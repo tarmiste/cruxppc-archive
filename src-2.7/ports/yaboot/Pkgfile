@@ -1,0 +1,26 @@
+# Description: Yaboot is a Power Architecture bootloader for Open Firmware based machines 
+# URL: http://yaboot.ozlabs.org/
+# Maintainer: CRUX PPC team - http://cruxppc.org/
+# Depends on: hfsutils, e2fsprogs, reiserfsprogs, xfsprogs, nvsetenv
+# PPC!=
+
+name=yaboot
+version=1.3.16
+release=3
+source=(http://yaboot.ozlabs.org/releases/$name-$version.tar.gz \
+	chrpfix.patch yaboot-1.3.16-memalign.patch)
+
+build() {
+	export CFLAGS="-Os -m32 -pipe -fsigned-char -fno-strict-aliasing"
+    
+    cd $SRC/$name-$version
+    patch -p0 -i $SRC/chrpfix.patch
+    patch -p1 -i $SRC/yaboot-1.3.16-memalign.patch
+
+    patch -p0 < man.patch
+    (cd etc;
+    sed -i "s|/usr/local/lib/yaboot/yaboot|/usr/lib/yaboot/yaboot|" yaboot.conf;
+    sed -i "s|/usr/local/lib/yaboot/ofboot|/usr/lib/yaboot/ofboot|" yaboot.conf)
+    make ROOT=/ PREFIX=usr
+    make ROOT=$PKG/ PREFIX=usr install
+}

@@ -1,0 +1,30 @@
+# Description: Device mapper userspace library
+# URL:         http://sourceware.org/lvm2/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# PPC!=:
+
+name=libdevmapper
+version=1.02.63
+release=1
+source=(ftp://sources.redhat.com/pub/lvm2/releases/LVM2.2.02.84.tgz
+        lvm2-static_build.patch)
+
+build() {
+    cd LVM2.2.02.84
+
+    patch -p1 -i $SRC/lvm2-static_build.patch
+
+    ./configure --prefix=/usr \
+                --sbindir=/sbin \
+                --libdir=/lib \
+                --datarootdir=/usr \
+                --with-staticdir=/sbin \
+                --with-usrlibdir=/usr/lib \
+                --disable-readline \
+                --enable-pkgconfig \
+                --enable-static_link \
+                --with-{user,group}=root
+
+    make device-mapper
+    make DESTDIR=$PKG install_device-mapper
+}

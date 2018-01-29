@@ -1,0 +1,71 @@
+# Description: The C library used in the GNU system
+# URL: http://www.gnu.org/software/libc/
+# Maintainer: CRUX PPC - http://cruxppc.org/
+# PPC!= 
+
+name=glibc
+version=2.12.2
+release=1
+source=(http://ftp.gnu.org/gnu/glibc/glibc-$version.tar.xz \
+	ftp://ftp.cruxppc.org/cruxppc/distfiles/2.7/kernel-headers-2.6.35.7.tar.xz \
+	Optimize-__getpagesize-a-bit.patch \
+	hosts resolv.conf nsswitch.conf host.conf ld.so.conf)
+
+build() {
+	# install build kernel headers
+	mkdir $PKG/usr
+	cp -r kernel-headers-2.6.35.7/include $PKG/usr
+	chown root:root $PKG/usr
+
+	patch -R -p1 -d $name-$version -i $SRC/Optimize-__getpagesize-a-bit.patch
+
+	sed -i '/^all-subdirs/,+6s/manual//' $name-$version/Makeconfig
+	
+	# we need to build a multilib for crux-ppc64 or a single lib for crux-ppc
+	
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+		mkdir build64
+		cd build64
+		echo "slibdir=/lib64" > configparms
+		echo "sbindir=/usr/sbin64" >> configparms
+		echo "bindir=/usr/bin64" >> configparms
+		CC="gcc -m64" ../$name-$version/configure --prefix=/usr \
+						--libexecdir=/usr/lib64 \
+						--libdir=/usr/lib64 \
+						--with-headers=$PKG/usr/include \
+						--with-tls \
+						--enable-kernel=2.6.27 \
+						--enable-add-ons \
+						--disable-profile \
+						--without-gd \
+						--host=powerpc64-unknown-linux-gnu
+		make
+		make install_root=$PKG install
+	
+		cd ..
+	fi
+
+    	mkdir build32
+    	cd build32
+	echo "cross-compiling = no" > configparms
+    	echo "slibdir=/lib" >> configparms
+    	CC="gcc -m32" ../$name-$version/configure --prefix=/usr \
+				--libexecdir=/usr/lib \
+				--libdir=/usr/lib \
+				--with-headers=$PKG/usr/include \
+				--with-tls \
+				--enable-kernel=2.6.27 \
+				--enable-add-ons \
+				--disable-profile \
+				--without-gd \
+				--host=powerpc-unknown-linux-gnu
+    	make
+    	make install_root=$PKG install
+    	
+    	cp ../{hosts,resolv.conf,nsswitch.conf,host.conf,ld.so.conf} $PKG/etc
+    	ln -sf ../usr/share/zoneinfo/UTC $PKG/etc/localtime
+	mkdir -p $PKG/etc/ld.so.conf.d $PKG/usr/lib/locale
+	touch $PKG/etc/ld.so.cache	
+ 
+  	rm -rf $PKG/usr/share/{info,locale} 
+}

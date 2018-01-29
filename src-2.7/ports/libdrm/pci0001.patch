@@ -1,0 +1,20 @@
+--- xf86drm.c.orig	2010-03-02 05:12:56.000000000 +0100
++++ xf86drm.c	2010-03-12 01:26:55.000000000 +0100
+@@ -845,7 +845,7 @@
+     if (drmIoctl(fd, DRM_IOCTL_GET_UNIQUE, &u))
+ 	return NULL;
+     u.unique[u.unique_len] = '\0';
+-
++    u.unique[7] = '1';
+     return u.unique;
+ }
+ 
+@@ -2060,7 +2060,7 @@
+ {
+     drm_irq_busid_t p;
+ 
+-    p.busnum  = busnum;
++    p.busnum  = busnum-0x100;
+     p.devnum  = devnum;
+     p.funcnum = funcnum;
+     if (drmIoctl(fd, DRM_IOCTL_IRQ_BUSID, &p))

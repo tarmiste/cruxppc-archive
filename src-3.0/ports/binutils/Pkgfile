@@ -1,0 +1,43 @@
+# Description: The GNU Binutils are a collection of binary tools
+# URL: http://www.gnu.org/software/binutils/
+# Maintainer:  CRUX PPC Team - http://cruxppc.org/
+# Depends on: zlib, libcloog-parma, libppl, elfutils
+# PPC!=upstream:
+
+name=binutils
+version=2.23.2
+release=2
+source=(ftp://ftp.gnu.org/pub/gnu/$name/$name-$version.tar.bz2 \
+	binutils-2.23.2-PR14887.patch)
+
+build() {
+	patch -d $name-$version -p1 -i $SRC/binutils-2.23.2-PR14887.patch
+
+	if [ "$HOSTTYPE" == "powerpc" ]; then
+        CONF="--disable-multilib"
+	fi
+
+    	mkdir build
+    	cd build
+
+ 	../$name-$version/configure $CONF \
+		--prefix=/usr --mandir=/usr/man \
+		--enable-shared \
+		--enable-lto \
+		--with-ppl --enable-cloog-backend=ppl \
+		--disable-ppl-version-check --disable-cloog-version-check \
+		--enable-64-bit-bfd \
+		--disable-nls \
+		--host=$MACHTYPE
+
+	# http://sourceware.org/bugzilla/show_bug.cgi?id=15345
+	make MAKEINFO=true tooldir=/usr
+	make MAKEINFO=true check
+	make MAKEINFO=true tooldir=/usr DESTDIR=$PKG install
+
+	install -m 0644 ../$name-$version/include/libiberty.h $PKG/usr/include
+	sed -i "s|-L$SRC[^ ]* ||g" $PKG/usr/lib/libbfd.la
+	
+	rm -rf $PKG/usr/{info,share}
+}
+

@@ -1,0 +1,33 @@
+# Description: Mesa 3D Graphics Library
+# URL: http://www.mesa3d.org
+# Packager: Tilman Sauerbeck, tilman at crux dot nu
+# Maintainer: CRUX PPC Team - http://cruxppc.org/
+# Depends on: libdrm, xorg-makedepend, xorg-glproto, xorg-xextproto, xorg-dri2proto, xorg-libx11, xorg-xf86vidmodeproto, xorg-libxext, xorg-libxxf86vm, xorg-libxt, xorg-libxdamage, expat, talloc, libxml2-python
+# PPC!=:
+
+name=mesa3d
+version=7.9.1
+release=1
+source=(ftp://ftp.freedesktop.org/pub/mesa/$version/MesaLib-$version.tar.bz2 \
+	Makefile glxgears.c glxinfo.c)
+
+build() {
+	cd Mesa-$version
+
+	mkdir -p progs/xdemos
+	mv $SRC/{Makefile,glx{gears,info}.c} progs/xdemos
+
+	./configure --prefix=/usr \
+	            --with-driver=dri \
+	            --with-dri-driverdir=/usr/lib/dri \
+		    --enable-glx-tls \
+		    --disable-gallium
+
+	make
+	make -C progs/xdemos
+
+	make DESTDIR=$PKG install
+
+	install -d $PKG/usr/bin
+	install -m 755 progs/xdemos/glx{gears,info} $PKG/usr/bin
+}

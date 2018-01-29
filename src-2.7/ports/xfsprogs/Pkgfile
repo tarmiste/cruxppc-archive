@@ -1,0 +1,27 @@
+# Description: Filesystem utilities for XFS
+# URL:         http://oss.sgi.com/projects/xfs/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# Depends on:  util-linux-ng
+# PPC!=:
+
+name=xfsprogs
+version=3.1.4
+release=1
+source=(ftp://oss.sgi.com/projects/xfs/cmd_tars/$name-$version.tar.gz)
+
+build() {
+    cd $name-$version
+
+    export DEBUG=-DNDEBUG
+    export OPTIMIZER=$CFLAGS
+
+    ./configure --prefix=/usr \
+                --mandir=/usr/man \
+                --disable-gettext
+    make -j1
+    make -j1 DIST_ROOT=$PKG install install-dev
+
+    rm $PKG/lib*/libhandle.{a,la}
+   
+    rm -r $PKG/usr/share
+}

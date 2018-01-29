@@ -1,0 +1,42 @@
+From: Mike Frysinger <vapier at gentoo dot org>
+To: libc-alpha at sourceware dot org
+Subject: [PATCH] sunrpc: fix rpc bootstrap builds
+Date: Tue,  3 Jul 2012 15:54:11 -0400
+
+If you build & install glibc w/rpc disabled, you no longer have headers in
+/usr/include/rpc/ (this is expected).  But if you try to build glibc w/rpc
+enabled, this gets into a bad state due to the new rpc helpers that get
+cross-compiled:
+
+$ make
+...
+x86_64-pc-linux-gnu-gcc -m32   -D_RPC_THREAD_SAFE_ -D_GNU_SOURCE -DIS_IN_build \
+	-include $objdir/config.h rpc_clntout.c -o $objdir/sunrpc/cross-rpc_clntout.o \
+	-MMD -MP -MF $objdir/sunrpc/cross-rpc_clntout.o.dt -MT $objdir/sunrpc/cross-rpc_clntout.o -c
+rpc_clntout.c:34:23: fatal error: rpc/types.h: No such file or directory
+compilation terminated.
+make: *** [$objdir/sunrpc/cross-rpc_clntout.o] Error 1
+
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+
+2012-07-03  Mike Frysinger  <vapier@gentoo.org>
+
+	* sunrpc/rpc_clntout.c: Change <rpc/types.h> to "rpc/types.h".
+---
+ sunrpc/rpc_clntout.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: libc/sunrpc/rpc_clntout.c
+===================================================================
+--- libc.orig/sunrpc/rpc_clntout.c	2012-07-04 16:09:16.000000000 -0700
++++ libc/sunrpc/rpc_clntout.c	2012-07-04 18:04:34.498085075 -0700
+@@ -31,7 +31,7 @@
+  */
+ #include <stdio.h>
+ #include <string.h>
+-#include <rpc/types.h>
++#include "rpc/types.h"
+ #include "rpc_parse.h"
+ #include "rpc_util.h"
+ #include "proto.h"
+

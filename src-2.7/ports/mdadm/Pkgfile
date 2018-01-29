@@ -1,0 +1,17 @@
+# Description: Multiple device (RAID) admin tool
+# URL:         http://www.cse.unsw.edu.au/~neilb/source/mdadm/
+# Maintainer:  Juergen Daubert, juergen dot daubert at t-online dot de
+# PPC!=:
+
+name=mdadm
+version=3.1.4
+release=1
+source=(http://www.kernel.org/pub/linux/utils/raid/$name/$name-$version.tar.bz2)
+
+build() {
+    cd $name-$version
+	sed -i -e "s|-z now -o mdmon|-z -o mdmon|g" Makefile
+    make CXFLAGS="$CFLAGS" all mdadm.static
+    make DESTDIR=$PKG MANDIR=/usr/man install
+    install -m755 mdadm.static $PKG/sbin
+}

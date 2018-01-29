@@ -1,0 +1,21 @@
+# Description: A tool to display dialog boxes from shell scripts
+# URL: http://hightek.org/dialog/
+# Maintainer: Jose V Beneyto, sepen at crux dot nu
+# Packager: Simone Rota, sip at crux dot nu
+# Depends on: ncurses
+
+name=dialog
+version=1.2-20130523
+release=1
+source=(http://fossies.org/linux/misc/$name-$version.tar.xz)
+
+build () {
+  cd $name-$version
+
+  ./configure --prefix=/usr \
+              --mandir=/usr/man \
+              --with-ncursesw
+
+  make
+  make DESTDIR=$PKG install
+}

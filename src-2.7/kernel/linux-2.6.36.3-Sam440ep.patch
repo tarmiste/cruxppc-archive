@@ -1,0 +1,14 @@
+diff --git a/arch/powerpc/boot/wrapper b/arch/powerpc/boot/wrapper
+index ac9e9a5..34975cb 100755
+--- a/arch/powerpc/boot/wrapper
++++ b/arch/powerpc/boot/wrapper
+@@ -187,7 +187,7 @@ cuboot*)
+     *-mpc85*|*-tqm85*|*-sbc85*)
+         platformo=$object/cuboot-85xx.o
+         ;;
+-    *-amigaone)
++    *-sam440ep|*-amigaone)
+         link_address='0x800000'
+         ;;
+     esac
+

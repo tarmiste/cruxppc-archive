@@ -1,0 +1,32 @@
+# Description: Miscellaneous system utilities
+# URL:         http://userweb.kernel.org/~kzak/util-linux/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# Depends on:  ncurses, zlib
+# PPC!=: footprint and FHS compliance fix
+
+name=util-linux-ng
+version=2.19
+release=1
+source=(http://ftp.kernel.org/pub/linux/utils/util-linux/v2.19/util-linux-$version.tar.bz2)
+
+build() {
+    cd util-linux-$version
+    # FHS compliance fix
+    sed -i 's@etc/adjtime@var/lib/hwclock/adjtime@g' \
+	hwclock/hwclock.c
+    ./configure --prefix=/usr \
+                --mandir=/usr/man \
+                --disable-{nls,wall} \
+                --enable-{write,raw,kill,partx}
+    make
+    make DESTDIR=$PKG install
+
+    install -d $PKG/{etc,var/{lib/libuuid,run/uuidd}}
+
+    mkdir -p $PKG/var/lib/hwclock
+    touch $PKG/var/lib/hwclock/adjtime
+
+    rm -r $PKG/usr/{share,man/ru}
+    rm $PKG/sbin/{mkfs.bfs,mkfs.minix,fsck.minix}
+    rm $PKG/usr/man/man8/{fsck.minix,mkfs.bfs,mkfs.minix}.8
+}

@@ -1,0 +1,84 @@
+diff -ruN ub2lb-orig/src/Makefile ub2lb/src/Makefile
+--- ub2lb-orig/src/Makefile	2013-06-07 04:08:58.000000000 +0200
++++ ub2lb/src/Makefile	2013-06-07 04:09:08.000000000 +0200
+@@ -25,20 +25,13 @@
+ 	parthenope.c
+ 
+ LDFLAGS = -nostartfiles -nodefaultlibs -static -Wl,-s -Wl,-N -Wl,--entry=bootstrap -Wl,--script=ldscript.lds
+-CFLAGS = -Wall -W -Werror -fno-builtin -nostdinc -nostdlib -DIN_PARTHENOPE -Os -DVERSION=\"93\" -DDATE=\"`date +%-d.%-m.%Y`\"
++CFLAGS = -Wall -W -Werror -fno-builtin -nostdinc -nostdlib -DIN_PARTHENOPE -O2 -DVERSION=\"93\" -DDATE=\"`date +%-d.%-m.%Y`\"
+ CFLAGS += -ffixed-r2 -ffixed-r14 -ffixed-r29 -DUSE_UBOOT
+ 
+ OBJECTS := $(patsubst %.c,%.o,$(filter %.c, $(SOURCES)))
+ 
+ 
+-ifndef CROSS_COMPILE
+-ifneq ($(shell arch),powerpc)
+-ARCH=ppc
+-CROSS_COMPILE=ppc_4xxFP-
+-endif
+-endif
+-
+-CC = $(CROSS_COMPILE)gcc
++CC = gcc
+ 
+ 
+ 
+diff -ruN ub2lb-orig/src/cdrom.c ub2lb/src/cdrom.c
+--- ub2lb-orig/src/cdrom.c	2013-06-07 04:08:58.000000000 +0200
++++ ub2lb/src/cdrom.c	2013-06-07 04:15:52.000000000 +0200
+@@ -495,10 +495,6 @@
+         char *sua;
+         struct iso9660_susp_entry *entry;
+ 
+-        char huge_array[1000];
+-        huge_array[1] = 1;
+-        huge_array[999] = 2;
+-
+         boot->phys = dev;
+         boot->dev.load_file =
+                 (int (*)(void *, char *, void *))fs_cdrom_load_file;
+diff -ruN ub2lb-orig/src/menu.c ub2lb/src/menu.c
+--- ub2lb-orig/src/menu.c	2013-06-07 04:08:58.000000000 +0200
++++ ub2lb/src/menu.c	2013-06-07 04:10:43.000000000 +0200
+@@ -799,6 +799,6 @@
+     while (self != NULL) {
+         entry = self;
+         self = self->next;
+-        entry_free(self);
++        entry_free(entry);
+     }
+ }
+diff -ruN ub2lb-orig/src/sfs.c ub2lb/src/sfs.c
+--- ub2lb-orig/src/sfs.c	2013-06-07 04:08:58.000000000 +0200
++++ ub2lb/src/sfs.c	2013-06-07 04:11:32.000000000 +0200
+@@ -164,7 +164,7 @@
+ static int sfs_loadfile(sfs_boot_dev_t * self, char *filename, void *filebuffer) {
+     struct SfsObject *o;
+     void *buffer;
+-    uint32_t i, next, readed, size, offset, tocopy;
++    uint32_t i, next, readed, size, tocopy;
+     struct SfsExtentBNode *sebn;
+ 
+     if ((o = sfs_find(self, filename)) == NULL) {
+@@ -176,7 +176,6 @@
+ 
+     next = o->object.file.data;
+     size = o->object.file.size;
+-    offset = 0;
+     readed = 0;
+     while (next != 0 && readed < size) {
+         sebn = (struct SfsExtentBNode *) get_bnode(self, next);
+diff -ruN ub2lb-orig/tools/parthenope-install.c ub2lb/tools/parthenope-install.c
+--- ub2lb-orig/tools/parthenope-install.c	2013-06-07 04:08:58.000000000 +0200
++++ ub2lb/tools/parthenope-install.c	2013-06-07 04:09:08.000000000 +0200
+@@ -215,7 +215,7 @@
+ 
+     if (argc != 2) {
+         fprintf(stderr, "parthenope-install: Usage: %s "
+-                "/path/to/Parthenope!\n", argv[0]);
++                "/path/to/ub2lb!\n", argv[0]);
+         return -1;
+     }
+ 
+Binary files ub2lb-orig/ub2lb and ub2lb/ub2lb differ

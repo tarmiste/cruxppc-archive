@@ -1,0 +1,30 @@
+# Description: Collection of utilities to handle ELF objects.
+# URL: http://www.ohloh.net/p/elfutils
+# Maintainer: acrux, acrux at linuxmail dot org
+# Depends on: bzip2, xz, zlib
+# PPC!=
+
+name=elfutils
+version=0.155
+release=1
+source=(https://fedorahosted.org/releases/e/l/$name/$version/$name-$version.tar.bz2 \
+	https://fedorahosted.org/releases/e/l/$name/$version/$name-portability.patch \
+	https://fedorahosted.org/releases/e/l/$name/$version/$name-robustify.patch)
+
+build() {
+	cd $name-$version
+
+	patch -p1 -i $SRC/$name-portability.patch
+	patch -p1 -i $SRC/$name-robustify.patch
+
+	./configure \
+		--prefix=/usr \
+		--program-prefix=eu-
+
+	find -name Makefile | xargs sed -i -e 's/-Werror//'
+
+	make
+	make DESTDIR=$PKG install
+
+	rm -rf $PKG/usr/share
+}

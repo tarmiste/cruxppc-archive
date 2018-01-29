@@ -1,0 +1,40 @@
+# Description: The GNU Binutils are a collection of binary tools
+# URL: http://www.gnu.org/software/binutils/
+# Maintainer:  CRUX PPC Team - http://cruxppc.org/
+# Depends on: zlib, ppl, cloog-ppl
+# PPC!=upstream:
+
+name=binutils
+version=2.21
+release=1
+source=(ftp://ftp.gnu.org/pub/gnu/$name/$name-$version.tar.bz2)
+
+build() {
+	export MAKEFLAGS="-j1"
+	sed -i '/^SUBDIRS/s/doc//' $name-$version/bfd/Makefile.in
+        sed -i '/^# RELEASE=y/s/#//' $name-$version/bfd/Makefile.in
+
+	if [ "$HOSTTYPE" == "powerpc" ]; then
+        CONF="--disable-multilib"
+	fi
+
+    	mkdir build
+    	cd build
+
+ 	AR=ar AS=as ../$name-$version/configure $CONF --prefix=/usr \
+		--enable-shared --mandir=/usr/man \
+		--disable-nls \
+		--enable-64-bit-bfd \
+		--host=$MACHTYPE
+	
+	make tooldir=/usr
+	make check
+	make tooldir=/usr DESTDIR=$PKG install
+	cp ../$name-$version/include/libiberty.h $PKG/usr/include
+	install -D -m 644 ../$name-$version/{gas,binutils}/doc/*.1 $PKG/usr/man/man1
+        install -D -m 644 ../$name-$version/binutils/doc/cxxfilt.man $PKG/usr/man/man1/c++filt.1
+	sed -i "s|-L$SRC[^ ]* ||g" $PKG/usr/lib/libbfd.la
+	
+	rm -rf $PKG/usr/{info,share}
+	rm -r $PKG/usr/man/man1/{dlltool,nlmconv,windmc,windres}.*
+}

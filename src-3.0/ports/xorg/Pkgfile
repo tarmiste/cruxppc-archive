@@ -1,0 +1,15 @@
+# Description: x.org's implementation of X11
+# URL: http://xorg.freedesktop.org
+# Maintainer: 
+# Depends on: 
+# PPC!= xorg unsupported in CRUX PPC 3.0
+
+name=xorg
+version=0
+release=0
+source=()
+
+build() {
+    install -d $PKG/usr/etc
+    echo "$name version $version" > $PKG/usr/etc/$name
+}

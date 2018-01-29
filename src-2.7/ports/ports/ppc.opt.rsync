@@ -1,0 +1,3 @@
+host=cruxppc.org
+collection=ports/opt/2.7/
+destination=/usr/ports/ppc/opt

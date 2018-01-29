@@ -1,0 +1,50 @@
+# Description: Yaboot is a Power Architecture bootloader for Open Firmware based machines
+# URL:         http://yaboot.ozlabs.org/
+# Maintainer:  CRUX PPC - http://cruxppc.org/
+# Depends on:  util-linux, hfsutils, e2fsprogs, reiserfsprogs, xfsprogs, nvsetenv
+# PPC!=
+
+name=yaboot
+version=1.3.17
+release=3
+source=(http://yaboot.ozlabs.org/releases/$name-$version.tar.gz \
+        http://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/v1.42.2/e2fsprogs-1.42.2.tar.gz \
+        chrpfix.patch yaboot-stubfuncs.patch)
+
+build() {
+	# yaboot is built against a specific libext2 variant
+
+        export CFLAGS="-Os -m32 -mcpu=powerpc -pipe"
+
+        cd $name-$version
+        sed -i -s "s|-Werror|-Wno-error|g" Makefile
+        patch -p0 -i $SRC/chrpfix.patch
+        patch -p1 -i $SRC/yaboot-stubfuncs.patch
+
+                (cd $SRC/e2fsprogs-1.42.2
+                        mkdir build
+                        cd build
+                        ../configure --prefix=/usr \
+			--with-root-prefix= \
+			--enable-elf-shlibs \
+			--enable-debugfs \
+			--disable-testio-debug \
+			--disable-e2initrd-helper \
+			--disable-resizer \
+			--disable-defrag \
+			--disable-imager \
+			--disable-nls \
+			--disable-fsck \
+			--disable-libblkid \
+			--disable-libuuid \
+			--disable-uuidd
+
+                make -j1 libs)
+
+    patch -p0 < man.patch
+    sed -i "s|LLIBS\ \=\ \-lext2fs|LLIBS\ \=\ \.\.\/e2fsprogs-1.42.2\/build\/lib\/ext2fs\/libext2fs\.a|" Makefile
+    sed -i -e "s|/usr/local/lib/yaboot|/usr/lib/yaboot|" etc/yaboot.conf
+
+    make ROOT=/ PREFIX=usr
+    make ROOT=$PKG/ PREFIX=usr install
+}

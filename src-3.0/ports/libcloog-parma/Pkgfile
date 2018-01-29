@@ -1,0 +1,45 @@
+# Description: The CLooG Code Generator in the Polyhedral Model's Home
+# URL: http://www.cloog.org/
+# Maintainer: CRUX PPC Team - http://cruxppc.org/
+# Depends on: libppl, libgmp
+# PPC!=
+
+name=libcloog-parma
+version=0.16.1
+release=1
+source=(http://www.bastoul.net/cloog/pages/download/count.php3?url=./cloog-parma-$version.tar.gz)
+
+build () {
+	cd cloog-parma-$version
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+		mkdir build64
+		cd build64
+		CC="gcc -m64" CXX="g++ -m64" ../configure --prefix=/usr \
+			--mandir=/usr/man \
+			--libdir=/usr/lib64 \
+			--host=powerpc64-unknown-linux-gnu \
+			--enable-shared \
+			--with-gmp=system --with-ppl=system
+
+		make
+		make check 
+		make DESTDIR=$PKG install
+
+		cd ..
+	fi
+
+	mkdir build32
+	cd build32
+        CC="gcc -m32" CXX="g++ -m32" ../configure --prefix=/usr \
+                --mandir=/usr/man \
+                --host=powerpc-unknown-linux-gnu \
+                --enable-shared \
+		--with-gmp=system --with-ppl=system
+
+        make
+	make check
+        make DESTDIR=$PKG install
+	
+	rm -rf $PKG/usr/share
+}

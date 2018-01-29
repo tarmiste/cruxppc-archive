@@ -1,0 +1,26 @@
+# Description: UB2LB aka Parthenope, u-boot second level bootloader
+# URL: http://ub2lb.sf.net/
+# Maintainer: acrux, acrux at linuxmail dot org
+# Packager: Giuseppe Coviello, cjg at cruxppc dot org
+# Depends on:
+# PPC!=:
+
+#URL: https://github.com/cjg/ub2lb
+name=parthenope
+version=0.93
+release=2
+source=(ftp://ftp.cruxppc.org/cruxppc/distfiles/ub2lb-$version.zip \
+	0.patch)
+
+build() {
+	cd ub2lb
+
+		unset CFLAGS
+		unset CXXFLAGS
+
+	patch -p1 -i $SRC/0.patch
+
+	make
+	install -D -m 0755 tools/parthenope-install $PKG/usr/sbin/parthenope-install
+	install -D -m 0755 src/ub2lb $PKG/usr/share/parthenope/ub2lb
+}

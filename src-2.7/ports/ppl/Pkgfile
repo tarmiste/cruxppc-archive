@@ -1,0 +1,47 @@
+# Description: Parma Polyhedra Library (PPL)
+# URL: http://www.cs.unipr.it/ppl/
+# Maintainer: CRUX PPC Team - http://cruxppc.org/
+# Packager: acrux,  acrux at linuxmail dot org
+# Depends on: libgmp
+# PPC!=
+
+name=ppl
+version=0.11
+release=1
+source=(ftp://ftp.cs.unipr.it/pub/ppl/releases/$version/$name-$version.tar.lzma \
+	ppl.hh)
+
+build () {
+	mkdir build32
+	cd build32
+        CC="gcc -m32" CXX="g++ -m32" ../$name-$version/configure --prefix=/usr \
+                --mandir=/usr/man --with-gnu-ld \
+                --host=powerpc-unknown-linux-gnu \
+		--enable-interfaces=c,cxx \
+		--enable-shared --disable-optimization
+
+        make
+	make check
+        make DESTDIR=$PKG install
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+	        mv -v $PKG/usr/bin/ppl-config{,-32}
+		cd ..
+
+		mkdir build64
+		cd build64
+		CC="gcc -m64" CXX="g++ -m64" ../$name-$version/configure --prefix=/usr \
+			--mandir=/usr/man --with-gnu-ld \
+			--libdir=/usr/lib64 \
+			--host=powerpc64-unknown-linux-gnu \
+			--enable-interfaces=c,cxx \
+			--enable-shared --disable-optimization
+		make 
+		make check
+		make DESTDIR=$PKG install
+		mv -v $PKG/usr/bin/ppl-config{,-64}
+
+		cp $SRC/ppl.hh $PKG/usr/include	
+	fi
+	rm -r $PKG/usr/share/doc
+}

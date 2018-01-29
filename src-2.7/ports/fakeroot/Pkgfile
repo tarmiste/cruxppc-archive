@@ -1,0 +1,16 @@
+# Description: Run commands in an environment faking root privileges
+# URL:         http://packages.debian.org/unstable/utils/fakeroot
+# Maintainer:  Juergen Daubert, juergen dot daubert at t-online dot de
+
+name=fakeroot
+version=1.14.5
+release=1
+source=(http://ftp.debian.org/debian/pool/main/f/$name/${name}_$version.orig.tar.bz2)
+
+build () {
+    cd $name-$version
+    ./configure --prefix=/usr --mandir=/usr/man
+    make
+    make DESTDIR=$PKG install
+    rm -r $PKG/usr/man/??
+}

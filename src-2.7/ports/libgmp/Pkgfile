@@ -1,0 +1,66 @@
+# Description: GMP is a library for arithmetic on arbitrary precision integers, rational numbers, and floating-point numbers
+# URL: http://www.gmplib.org/
+# Maintainer: The CRUX PPC Team - http://cruxppc.org/
+# Packager: acrux, acrux at linuxmail dot org
+# PPC!=
+
+name=libgmp
+version=5.0.1
+release=2
+source=(http://ftp.sunet.se/pub/gnu/gmp/gmp-$version.tar.bz2 \
+	gmp.h $name-$version-long-long-limbs-fix.patch)
+
+build () {
+	(cd gmp-$version 
+	patch -p1 -i $SRC/$name-$version-long-long-limbs-fix.patch)
+
+	mkdir build32
+	cd build32
+	
+	# it's nasty but we need this hack
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+		_CFLAGS=$CFLAGS
+		_CXXFLAGS=$CXXFLAGS
+		CFLAGS="$(echo $CFLAGS  | sed 's|-mcpu=.*\ |-mcpu=powerpc -m32 |')"
+ 		CXXFLAGS="$(echo $CXXFLAGS  | sed 's|-mcpu=.*\ |-mcpu=powerpc -m32 |')"
+ 	fi
+
+        ../gmp-$version/configure --prefix=/usr \
+                --mandir=/usr/man \
+            	--host=powerpc-unknown-linux-gnu \
+		--build=powerpc-unknown-linux-gnu \
+                --enable-cxx \
+                --enable-mpbsd \
+		--with-gnu-ld
+
+        make
+	make check
+        make DESTDIR=$PKG install
+	ln -s libgmp.so.10 $PKG/usr/lib/libgmp.so.3
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+	       	CFLAGS=${_CFLAGS}
+		CXXFLAGS=${_CXXFLAGS}
+		mv -v $PKG/usr/include/gmp{,-32}.h
+		cd ..
+
+		mkdir build64
+		cd build64
+		../gmp-$version/configure --prefix=/usr \
+			--mandir=/usr/man \
+			--libdir=/usr/lib64 \
+			--enable-cxx \
+			--enable-mpbsd \
+			--with-gnu-ld
+
+		make
+		make check
+		make DESTDIR=$PKG install
+		ln -s libgmp.so.10 $PKG/usr/lib64/libgmp.so.3
+		mv -v $PKG/usr/include/gmp{,-64}.h
+
+		cp $SRC/gmp.h $PKG/usr/include	
+	fi
+	
+	rm -r $PKG/usr/share
+}

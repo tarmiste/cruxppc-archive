@@ -1,0 +1,24 @@
+# Description: A powerfull replacement to standard ports utility
+# URL: http://cruxppc.org/Ilenia
+# Depends on: httpup, rsync
+# Maintainer: acrux, acrux at linuxmail dot org
+# Packager: Giuseppe Coviello, cjg at cruxppc dot org
+# PPC!=
+
+name=ilenia
+version=3.5
+release=1
+source=(ftp://ftp.cruxppc.org/cruxppc/distfiles/$name/$name-$version.tar.gz \
+	ilenia.conf-cruxppc.patch)
+
+build () {
+	cd $name-$version
+	patch -p1 -i $SRC/ilenia.conf-cruxppc.patch
+
+	./configure --prefix=/usr --mandir=/usr/man
+
+	make
+	make DESTDIR=$PKG install
+
+	mkdir $PKG/usr/ports
+}

@@ -1,0 +1,21 @@
+# Description: XML::Parser
+# URL: http://search.cpan.org/dist/XML-Parser/
+# Maintainer: Lucas Hazel, lucas at die dot net dot au
+# Packager: Matt Housh, jaeger at morpheus dot net
+# Depends on: expat, perl
+
+name=p5-xml-parser
+version=2.40
+release=1
+source=(http://search.cpan.org/CPAN/authors/id/C/CH/CHORNY/XML-Parser-$version.tar.gz)
+
+build() {
+	cd XML-Parser-$version
+	perl Makefile.PL
+	make OPTIMIZE="$CFLAGS"
+	make DESTDIR=$PKG install
+	find $PKG -name .packlist -o \
+		-name perllocal.pod -o \
+		-name README -o \
+		-name '*.bs' | xargs rm
+}

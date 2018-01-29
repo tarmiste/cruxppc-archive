@@ -1,0 +1,29 @@
+# Description: Suite to support Apple laptop specific functions
+# URL:         http://sourceforge.net/projects/pbbuttons/
+# Maintainer:  CRUX PPC team http://cruxppc.org
+# Depends on:  run-parts
+# PPC!=
+
+name=pbbuttonsd
+version=0.8.1a
+release=2
+source=(ftp://ftp.cruxppc.org/cruxppc/distfiles/$name-$version.tar.gz \
+	fnmode.patch laptopmode.sh.patch cpufreq.patch \
+	pbbuttonsd)
+
+build() {
+	# Gentoo patches
+	patch -d $name-$version -p0 -i $SRC/fnmode.patch
+	patch -d $name-$version -p0 -i $SRC/laptopmode.sh.patch
+	patch -d $name-$version -p0 -i $SRC/cpufreq.patch
+
+	cd $name-$version
+
+	./configure LAPTOP=PB --prefix=/usr \
+	--disable-nls --with-gnu-ld --without-oss \
+	--mandir=/usr/man --sysconfdir=/etc
+			  
+	make -j1
+	make DESTDIR=$PKG install
+	install -D -m 755 ../pbbuttonsd $PKG/etc/rc.d/pbbuttonsd
+}

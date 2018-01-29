@@ -1,0 +1,230 @@
+Release Notes for CRUX PPC 2.7
+
+  Introduction
+
+   This page discusses the relevant changes introduced in CRUX PPC 2.7a.
+   CRUX PPC 2.7  is released  as two  different installation  ISO: 32bit  and
+   64bit. The 32bit version  is based on a  single lib toolchain instead  the
+   64bit one comes with  a multilib toolchain. These  two versions share  the
+   same ports tree.
+   Everybody upgrading from the previous release is advised to carefully read
+   the following notes.
+
+  About Power Architecture^(R) hardware
+
+ supported machines:
+ Apple Power Macintosh G3 Blue&White
+ Apple 32bit "NewWorld" G3/G4 (PowerBook, iBook, Power Mac, iMac, eMac, Xserve)
+ Apple 64bit G5 (Power Mac, iMac, Xserve)
+ Genesi PegasosII, Efika 5200B
+ Acube Sam440ep, Sam440ep-flex, Sam460ex
+ IBM pSeries POWER3/POWER3-II/POWER4/POWER4+/POWER5
+ IBM Intellistation POWER 265/275
+ IBM eServer OpenPOWER 710/720
+ YDL Powerstation PPC970MP
+
+ untested machines:
+ IBM iSeries POWERn
+ IBM System p POWER5+/POWER6/POWER6+
+ IBM Intellistation POWER 185/285
+ Bull Escala EL/PL PowerPC 64bit
+ Bull Escala EL/PL POWERn
+ Grande Vitesse Systems GVS9000 PowerPC
+ Marathon PowerRack G-series
+ IBM RS/6000 RS64 (I,II,III,IV)
+ Power.org Bimini Devel Board
+ IBM BladeCenter JS
+ IBM BladeCenter JS (SLOF)
+ Total Impact briQ G3/G4, YDL briQ Node
+
+ ---- --- --- --- --- --- --- ----
+
+ skipped machines:
+ IBM RS/6000 CHRP (604e/604ev/604r)
+ Bull Estrella CHRP 32bit
+
+ not supported machines:
+ Apple "OldWorld" G3, Umax w/G3, PowerComputing w/G3
+ YDL Mai Logic Teron, Genesi PegasosI (April Fix I/II)
+ Teron Eyetech AmigaOne G3-SE/G3-XE/G4-XE, Micro-A1 C/I
+ PReP standard PowerPC based products (Apple,IBM,Motorola)
+ IBM POWER1/POWER1++/POWER2/POWER2+ based products
+ IBM "Legacy" iSeries POWER3/POWER4
+ IBM Power Systems POWER7, IBM PPCA2
+ P.A. Semiconductor PWRficient PA6T-1682M "Electra"
+ Varisys "Nemo", Eyetech AmigaOne X1000
+ Freescale 512x, 5200, 5200B
+ Freescale PowerQUICC (I/II/IIPro/III) 8xx,82xx,83xx,85xx
+ Freescale QorIQ P1,P2,P3,P4,P5 series
+ Freescale Tower System 512x PowerPC Kit
+ AppliedMicro APM801xx, APM821xx, APM862xx
+ IBM BladeCenter QS
+ PCI Express (PCIe) card (IBM PowerXCell 8i Cell processor based) - CAB (Cell Accelerator Board)
+ Sony ZEGO BCU-100
+ Matrix Vision mvXCellBox/mvXCellBox-2
+ LimePC (all MPC512x SoC based products), Cherrypal C100/C114/C120, Vodacom Linkbook
+ IBM/AMCC Walnut 405GP, DHT Walnut 405GP
+ AMCC 405/4x0 SoC
+ Xilinx Virtex-II/Virtex-4/Virtex-5
+ IBM PowerPC 476FP
+ LSI Axxia ACP3448
+ Analague & Micro Taipan PowerPC motherboard
+ Realm Systems BlackDog, Inaura K9/iD3
+ Buffalo Terastation TS/HS/TSPRO1 (PowerPC)
+ LinkStation/KuroBox LS1/HG/HS (PowerPC)
+ D-Link NAS (PowerPC)
+ Synology NAS (PowerPC)
+ Thecus N1200
+ Excito Bubba|2
+ Plat'Home OpenBlockS 266/600
+ RouterBOARD RB 333/600A/1000/1000U
+ PowerPC game consoles (Sony PS3, Nintendo Wii, Nintendo GameCube, Microsoft Xbox 360)
+ PowerPC SoC Set Top Boxes
+
+  Toolchain updates
+
+   CRUX PPC 2.7a includes glibc 2.12.2, gcc 4.5.3 and binutils 2.21.1 .
+
+  Kernel
+
+   Linux-2.6.36.x
+
+  Image
+
+   To save space, all packages shipped with the image are compressed with xz,
+   which requires a new version of pkgutils.
+
+  Important changes
+
+   Important libraries have been updated to new major versions, which are not
+   ABI compatible with the old versions. We strongly advise against  manually
+   updating to CRUX PPC 2.7a via ports, since these changes will  temporarily
+   break the system:
+
+     * libgmp has been updated to version 5.0.x, required by gcc and
+       coreutils ;
+     * libmpfr has been updated to version 3.0.x, required by gcc ;
+     * ppl has been updated to version 0.11.x, required by gcc and binutils ;
+     * xz has been updated to version 5.0.x, required by libarchive ;
+     * openssl has been updated to version 1.0, required by many packages
+       (most noticeable: wget, which in turn is called by pkgmk to download
+       sources) ;
+     * libjpeg has been updated to version 8 ;
+     * libpng has been updated to version 1.4 ;
+     * cairo is no longer built with support for the glitz backend (this
+       affects GTK+ applications and others) ;
+     * xulrunner is no longer built with support for dbus and dbus-glib .
+
+    core and opt ports
+
+   CRUX PPC 2.7a ships with Perl 5.12.x . Minor release numbers are no longer
+   used in the directory  layout of perl.  It is now  possible to update  the
+   perl port without breaking every perl extension module.
+   Our glibc does not contain all possible locales, see handbook.
+   New features in pkgutils:
+
+     * In addition to gzip, pkgmk has been enhanced to optionally compress
+       newly built packages with bzip2 or xz ;
+     * pkgutils can read packages that have been compressed with bzip2 and xz
+       in addition to gzip ;
+     * pkgmk has been extended by the --ignore-new command line switch, which
+       makes it ignore new files in a footprint mismatch ;
+     * pkgmk has learned distinct exit codes for the various errors that
+       might occur.
+
+   acl has been added to core collection.
+   btrfs-progs has been added to core collection.
+   libattr has been renamed to attr and moved from opt to core collection.
+   libpcap and glib have been moved from opt to core collection.
+   support for acl/cap has been added to coreutils.
+   libmpfr depends on libmpc.
+   libmpc has been added to core collection.
+   portmap has been removed from core collection.
+   NFSv4 support has been added to  nfs-utils. This requires a couple of  new
+   libraries (keyutils, libevent, libtirpc, libnfsidmap), and portmap has  to
+   be replaced by rpcbind. We have moved  the entire NFS stack to opt,  which
+   is still  shipped with  the ISO.  Setup will  handle the  upgrade and  new
+   requirements automatically.
+   Default configuration of sysklogd has been extended.
+   Default logging of dcron is now done via sysklogd.
+   gtk depends on gdk-pixbuf.
+   mac-fdisk has been moved to 0.13 + gentoo patches.
+   libxml2-python and talloc have been added to opt collection.
+   links has been replaced by elinks in opt collection for 64bit too.
+
+    xorg ports
+
+   CRUX PPC 2.7a ships with Xorg 7.6 and xorg-server 1.10.x.
+   mesa3d depends on libxml2-python and talloc.
+   Default X font path has been changed to /usr/share/fonts/X11 .
+
+  Miscellaneous notes
+
+   Please be sure you are using the  latest version of firmware for your  own
+   machine.
+
+   When upgrading from CRUX PPC 2.6 to CRUX PPC 2.7a, the setup program  will
+   take a while completing the Please wait [2.6 -> 2.7 check] phase.
+   CRUX introduced a new boot file: /etc/rc.fix for generic operations to  be
+   excuted at boot time. At  the moment the script  takes care of font  cache
+   generation for xorg, so your very first boot under CRUX PPC 2.7 will  take
+   a few additional seconds.
+
+   ofpath from yaboot  is still unable  to find devices  on Apple's  machines
+   using new libata (pata) linux kernel drivers.
+   We   recommend    to   read    the   path    devices   directly    through
+   /proc/device-tree/aliases/ anyway  are now  present ofpathname  (from  IBM
+   powerpc-utils) and  new-ofpath i.e.  the reworked  script by  JoseJX  from
+   Gentoo PPC.
+   As  suggestion  you  ought  to  use  new-ofpath  for  Apple  machines  and
+   ofpathname for IBM machines.
+
+   IBM RS/6000 CHRP  (604e/604ev/604r): the  support for  these machines  has
+   been removed from 32bit ISO.
+
+   Acube Sam460ex: the support for these  machines has been added into  32bit
+   ISO.
+
+   Genesi Efika users: bootkernel shipped with  CRUX PPC 2.7a has "Root  file
+   system on NFS" enabled,  see Efika Install  HowTo. Bootkernel doesn't  use
+   Device Tree Supplement  (efika-dts-20071114.zip) because unmaintained  and
+   there are some important issues with recent kernels.
+
+   Acube Sam440ep and Sam460ex  users: please, consider  to update u-boot  on
+   your board.
+
+  Known issues
+
+   Apple iMac  G5: if  you are  experiencing difficulties  booting, try  with
+   "apple64 video=ofonly".
+   Genesi PegasosII: Marvell DiscoveryII sram gigabit ethernet  [mv643xx_eth]
+   support in kernel > 2.6.31.2 is newly broken.
+   Genesi Efika: audio  support in  kernel <  2.6.34 is  unstable. Anyway  to
+   enable it you need a reworked Device Tree Supplement forth script.
+   IBM pSeries POWER4+  or older:  you could  read some  kernel warning  like
+   "ata1: lost interrupt (Status 0x50)".
+   Acube Sam460ex: boot from SDHC and audio support aren't yet implemented.
+
+  Tips
+
+   YDL Powerstation  quad  G5 (SLOF):  to  boot  at yaboot  prompt  try  with
+   "cdrom:0,/ppc/ppc64/vmlinux root=/dev/sr0" or  "cdrom:0,/ppc/ppc64/vmlinux
+   root=/dev/sr0 console=ttyS0,19200".
+   IBM Blade, IBM pSeries  POWER5 or newer: choose  a proper working hvc0  or
+   hvsi0 console.
+   Genesi Efika: choose a proper installation method like via NFS or from USB
+   pendrive.
+   Acube Sam460ex: onboard  SATA2 controller works  only with LBA48/NCQ  hard
+   disk drives .
+
+   As CRUX PPC  2.7a uses new  pata drivers, all  the disks are  now seen  as
+   scsi, so what used to be  hda will now be sda,  and the cdrom will be  sr0
+   and  if  you  still  experience  any  problems  booting  then  try  adding
+   "rootdelay=20" or more.
+
+  Errata
+
+   None so far
+
+   Retrieved from http://cruxppc.org/ReleaseNotes2-7
+   Page last modified on July 17, 2011, at 08:35 PM

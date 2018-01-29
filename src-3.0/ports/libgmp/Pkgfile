@@ -1,0 +1,47 @@
+# Description: GMP is a library for arithmetic on arbitrary precision integers, rational numbers, and floating-point numbers
+# URL: http://www.gmplib.org/
+# Maintainer: The CRUX PPC Team - http://cruxppc.org/
+# Packager: acrux, acrux at linuxmail dot org
+# PPC!=
+
+name=libgmp
+version=5.1.2
+release=1
+source=(ftp://ftp.gmplib.org/pub/gmp-$version/gmp-$version.tar.xz \
+	gmp.h)
+
+build () {
+	mkdir build32
+	cd build32
+	
+	CC="gcc -m32" CXX="g++ -m32" ../gmp-$version/configure ABI=32 \
+		--prefix=/usr --mandir=/usr/man \
+		--host=powerpc-unknown-linux-gnu \
+		--enable-cxx
+
+	make
+	make check
+	make DESTDIR=$PKG install
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+		mv -v $PKG/usr/include/gmp{,-32}.h
+		cd ..
+
+		mkdir build64
+		cd build64
+		CC="gcc -m64" CXX="g++ -m64" ../gmp-$version/configure ABI=mode64 \
+			--host=$MACHTYPE \
+			--prefix=/usr --mandir=/usr/man \
+			--libdir=/usr/lib64 \
+			--enable-cxx
+
+		make
+		make check
+		make DESTDIR=$PKG install
+		mv -v $PKG/usr/include/gmp{,-64}.h
+
+		cp $SRC/gmp.h $PKG/usr/include
+	fi
+
+	rm -r $PKG/usr/share
+}

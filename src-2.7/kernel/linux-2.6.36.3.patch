@@ -1,0 +1,189 @@
+--- linux-2.6.30-rc3/drivers/video/Kconfig	2009-04-22 05:07:00.000000000 +0200
++++ b/drivers/video/Kconfig	2009-05-05 10:55:17.000000000 +0200
+@@ -1985,8 +1985,10 @@
+ 	select FB_CFB_COPYAREA
+ 	select FB_CFB_IMAGEBLIT
+ 	---help---
+-	  Say Y here to enable support for the IBM GXT4500P display
+-	  adaptor, found on some IBM System P (pSeries) machines.
++	  Say Y here to enable support for the IBM GXT4000P/6000P and	
++	  GXT4500P/6500P display adaptor based on Raster Engine RC1000, 
++	  found on some IBM System P (pSeries) machines. This driver 
++	  doesn't use Geometry Engine GT1000.
+ 
+ config FB_PS3
+ 	tristate "PS3 GPU framebuffer driver"
+--- linux-2.6.30-rc3/drivers/video/gxt4500.c	2009-04-22 05:07:00.000000000 +0200
++++ drivers/video/gxt4500c	2009-05-05 10:47:41.000000000 +0200
+@@ -1,6 +1,7 @@
+ /*
+- * Frame buffer device for IBM GXT4500P and GXT6000P display adaptors
+- *
++ * Frame buffer device for IBM GXT4500P/6500P and GXT4000P/6000P
++ * display adaptors
++ * 
+  * Copyright (C) 2006 Paul Mackerras, IBM Corp. <paulus@samba.org>
+  */
+ 
+@@ -14,6 +15,8 @@
+ #include <linux/string.h>
+ 
+ #define PCI_DEVICE_ID_IBM_GXT4500P	0x21c
++#define PCI_DEVICE_ID_IBM_GXT6500P      0x21b
++#define PCI_DEVICE_ID_IBM_GXT4000P      0x16e
+ #define PCI_DEVICE_ID_IBM_GXT6000P	0x170
+ 
+ /* GXT4500P registers */
+@@ -173,6 +176,8 @@
+ /* List of supported cards */
+ enum gxt_cards {
+ 	GXT4500P,
++	GXT6500P,
++	GXT4000P,
+ 	GXT6000P
+ };
+ 
+@@ -182,6 +187,8 @@
+ 	const char *cardname;
+ } cardinfo[] = {
+ 	[GXT4500P] = { .refclk_ps = 9259, .cardname = "IBM GXT4500P" },
++        [GXT6500P] = { .refclk_ps = 9259, .cardname = "IBM GXT6500P" },
++        [GXT4000P] = { .refclk_ps = 40000, .cardname = "IBM GXT4000P" },
+ 	[GXT6000P] = { .refclk_ps = 40000, .cardname = "IBM GXT6000P" },
+ };
+ 
+@@ -736,6 +743,10 @@
+ static const struct pci_device_id gxt4500_pci_tbl[] = {
+ 	{ PCI_DEVICE(PCI_VENDOR_ID_IBM, PCI_DEVICE_ID_IBM_GXT4500P),
+ 	  .driver_data = GXT4500P },
++        { PCI_DEVICE(PCI_VENDOR_ID_IBM, PCI_DEVICE_ID_IBM_GXT6500P),
++          .driver_data = GXT6500P },
++        { PCI_DEVICE(PCI_VENDOR_ID_IBM, PCI_DEVICE_ID_IBM_GXT4000P),
++          .driver_data = GXT4000P },
+ 	{ PCI_DEVICE(PCI_VENDOR_ID_IBM, PCI_DEVICE_ID_IBM_GXT6000P),
+ 	  .driver_data = GXT6000P },
+ 	{ 0 }
+@@ -768,7 +779,7 @@
+ module_exit(gxt4500_exit);
+ 
+ MODULE_AUTHOR("Paul Mackerras <paulus@samba.org>");
+-MODULE_DESCRIPTION("FBDev driver for IBM GXT4500P/6000P");
++MODULE_DESCRIPTION("FBDev driver for IBM GXT4500P/6500P and GXT4000P/6000P");
+ MODULE_LICENSE("GPL");
+ module_param(mode_option, charp, 0);
+ MODULE_PARM_DESC(mode_option, "Specify resolution as \"<xres>x<yres>[-<bpp>][@<refresh>]\"");
+
+--- a/arch/powerpc/kernel/cpu_setup_6xx.S
++++ b/arch/powerpc/kernel/cpu_setup_6xx.S
+@@ -18,7 +18,7 @@
+ #include <asm/mmu.h>
+ 
+ _GLOBAL(__setup_cpu_603)
+-	mflr	r4
++	mflr	r5
+ BEGIN_MMU_FTR_SECTION
+ 	li	r10,0
+ 	mtspr	SPRN_SPRG_603_LRU,r10		/* init SW LRU tracking */
+@@ -27,60 +27,60 @@ BEGIN_FTR_SECTION
+ 	bl	__init_fpu_registers
+ END_FTR_SECTION_IFCLR(CPU_FTR_FPU_UNAVAILABLE)
+ 	bl	setup_common_caches
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_604)
+-	mflr	r4
++	mflr	r5
+ 	bl	setup_common_caches
+ 	bl	setup_604_hid0
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_750)
+-	mflr	r4
++	mflr	r5
+ 	bl	__init_fpu_registers
+ 	bl	setup_common_caches
+ 	bl	setup_750_7400_hid0
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_750cx)
+-	mflr	r4
++	mflr	r5
+ 	bl	__init_fpu_registers
+ 	bl	setup_common_caches
+ 	bl	setup_750_7400_hid0
+ 	bl	setup_750cx
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_750fx)
+-	mflr	r4
++	mflr	r5
+ 	bl	__init_fpu_registers
+ 	bl	setup_common_caches
+ 	bl	setup_750_7400_hid0
+ 	bl	setup_750fx
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_7400)
+-	mflr	r4
++	mflr	r5
+ 	bl	__init_fpu_registers
+ 	bl	setup_7400_workarounds
+ 	bl	setup_common_caches
+ 	bl	setup_750_7400_hid0
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_7410)
+-	mflr	r4
++	mflr	r5
+ 	bl	__init_fpu_registers
+ 	bl	setup_7410_workarounds
+ 	bl	setup_common_caches
+ 	bl	setup_750_7400_hid0
+ 	li	r3,0
+ 	mtspr	SPRN_L2CR2,r3
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ _GLOBAL(__setup_cpu_745x)
+-	mflr	r4
++	mflr	r5
+ 	bl	setup_common_caches
+ 	bl	setup_745x_specifics
+-	mtlr	r4
++	mtlr	r5
+ 	blr
+ 
+ /* Enable caches for 603's, 604, 750 & 7400 */
+@@ -194,10 +194,10 @@ setup_750cx:
+ 	cror	4*cr0+eq,4*cr0+eq,4*cr1+eq
+ 	cror	4*cr0+eq,4*cr0+eq,4*cr2+eq
+ 	bnelr
+-	lwz	r6,CPU_SPEC_FEATURES(r5)
++	lwz	r6,CPU_SPEC_FEATURES(r4)
+ 	li	r7,CPU_FTR_CAN_NAP
+ 	andc	r6,r6,r7
+-	stw	r6,CPU_SPEC_FEATURES(r5)
++	stw	r6,CPU_SPEC_FEATURES(r4)
+ 	blr
+ 
+ /* 750fx specific
+@@ -225,12 +225,12 @@ BEGIN_FTR_SECTION
+ 	andis.	r11,r11,L3CR_L3E@h
+ 	beq	1f
+ END_FTR_SECTION_IFSET(CPU_FTR_L3CR)
+-	lwz	r6,CPU_SPEC_FEATURES(r5)
++	lwz	r6,CPU_SPEC_FEATURES(r4)
+ 	andi.	r0,r6,CPU_FTR_L3_DISABLE_NAP
+ 	beq	1f
+ 	li	r7,CPU_FTR_CAN_NAP
+ 	andc	r6,r6,r7
+-	stw	r6,CPU_SPEC_FEATURES(r5)
++	stw	r6,CPU_SPEC_FEATURES(r4)
+ 1:
+ 	mfspr	r11,SPRN_HID0

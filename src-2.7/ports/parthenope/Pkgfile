@@ -1,0 +1,20 @@
+# Description: u-boot second level bootloader
+# URL: http://ub2lb.sf.net
+# Maintainer: Giuseppe Coviello <cjg@cruxppc.org>
+
+name=parthenope
+version=svn91
+release=2
+source=(ftp://ftp.cruxppc.org/cruxppc/distfiles/$name-$version.tar.gz)
+
+build() {
+	cd $name-$version
+	./configure
+	sed 's|-Os|-O0|g' -i src/Makefile
+
+	make  
+	mkdir -p $PKG/usr/share/parthenope
+	mkdir -p $PKG/usr/sbin
+	cp src/Parthenope $PKG/usr/share/parthenope
+	cp tools/parthenope-install $PKG/usr/sbin
+}

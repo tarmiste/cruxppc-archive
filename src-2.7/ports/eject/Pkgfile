@@ -1,0 +1,27 @@
+# Description: ejects CDs and operates CD-Changers
+# URL: http://ca.geocities.com/jefftranter%40rogers.com/eject.html
+# Maintainer: acrux, acrux at linuxmail dot org
+# PPC!=
+
+name=eject
+version=2.1.5
+release=2
+source=(ftp://ftp.cruxppc.org/cruxppc/distfiles/$name-$version.tar.gz \
+	eject-2.1.5-handle-spaces.patch eject-2.1.5-man-typo.patch \
+	eject-2.1.5-toggle.patch)
+
+build() {
+	cd $name
+	# gentoo patches
+	patch -p1 -i $SRC/eject-2.1.5-handle-spaces.patch
+	patch -p1 -i $SRC/eject-2.1.5-man-typo.patch
+	patch -p1 -i $SRC/eject-2.1.5-toggle.patch
+
+	./configure --prefix=/usr --mandir=/usr/man --disable-nls \
+	--enable-default-device=/dev/sr0
+
+	make
+	make DESTDIR=$PKG install
+
+	rm -rf $PKG/usr/share
+}

@@ -1,0 +1,33 @@
+#!/bin/sh
+
+# mount /dev as a devtmpfs or tmpfs, depending on current kernel capability
+# mount only, if it's not already mounted (e.g. after handover from initramfs)
+# note: some video drivers require exec access in /dev
+if ! /bin/mountpoint -q /dev ; then
+	if ! /bin/sed -n '/devtmpfs/q1' /proc/filesystems ; then
+		UDEVFS=devtmpfs
+	else
+		UDEVFS=tmpfs
+	fi
+	
+	/bin/mount -n -t $UDEVFS udev /dev -o exec,nosuid,mode=0755,size=8M
+fi
+
+# make sure hotplugger is not set
+echo > /proc/sys/kernel/hotplug
+
+# since v155, udevd automatically copies /lib/udev/devices
+# and creates /proc/{kcore,self/fd/{0,1,2}} symlinks
+
+# launch udev daemon
+/sbin/udevd --daemon
+
+# coldplug devices and wait for the queue to be processed
+/sbin/udevadm trigger --type=subsystems --action=add
+/sbin/udevadm settle
+/sbin/udevadm trigger --type=devices --action=add
+/sbin/udevadm settle
+
+# retry any failures
+/sbin/udevadm trigger --type=failed --action=add
+/sbin/udevadm settle

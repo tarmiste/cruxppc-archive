@@ -1,0 +1,9 @@
+pbbuttonsd-0.8
+
+
+---
+
+To use pbbuttonsd you need a linux kernel with enabled:
+
+CONFIG_SYSVIPC=y
+CONFIG_INPUT_EVDEV=y
