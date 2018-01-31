@@ -1,0 +1,55 @@
+# Description: Highly configurable text editor
+# URL:         http://www.vim.org/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# Depends on:  ncurses
+
+name=vim
+version=7.2.300
+release=1
+source=(ftp://ftp.vim.org/pub/vim/unix/vim-7.2.tar.bz2
+        ftp://ftp.vim.org/pub/vim/extra/vim-7.2-extra.tar.gz
+        ftp://ftp.vim.org/pub/vim/extra/vim-7.2-lang.tar.gz
+        ftp://ftp.vim.org/pub/vim/patches/7.2/7.2.001-100.gz
+        ftp://ftp.vim.org/pub/vim/patches/7.2/7.2.101-200.gz
+        ftp://ftp.vim.org/pub/vim/patches/7.2/7.2.201-300.gz)
+
+build () {
+    cd vim72/src
+
+    gunzip -c $SRC/7.2.*.gz | patch -p0 -d $SRC/vim72
+
+    ./configure --prefix=/usr \
+                --mandir=/usr/man \
+                --with-vim-name=vim \
+                --with-x=no \
+                --enable-gui=no \
+                --enable-multibyte \
+                --disable-gpm \
+                --disable-nls
+
+    make VIMRTDIR=
+    make VIMRTDIR= DESTDIR=$PKG installvimbin installruntime installlinks
+
+    mv $PKG/usr/share/vim/vimrc_example.vim $PKG/usr/share/vim/vimrc
+    rm -r $PKG/usr/{man/man?/vimtutor*,share/vim/{tutor,macros}}
+    rm $PKG/usr/share/vim/*/README.txt
+    ln -sf vim $PKG/usr/bin/evim
+    ln -sf /bin/vi $PKG/usr/bin/vi
+    ln -sf vim.1.gz $PKG/usr/man/man1/ex.1.gz
+    ln -sf vim.1.gz $PKG/usr/man/man1/vi.1.gz
+    ln -sf vim.1.gz $PKG/usr/man/man1/rvim.1.gz
+    ln -sf vim.1.gz $PKG/usr/man/man1/view.1.gz
+    ln -sf vim.1.gz $PKG/usr/man/man1/rview.1.gz
+    ln -sf vim.1.gz $PKG/usr/man/man1/gvim.1.gz
+
+    ./configure --prefix=/ \
+                --with-vim-name=vi \
+                --with-x=no \
+                --enable-gui=no \
+                --enable-multibyte \
+                --disable-gpm \
+                --disable-nls \
+                --with-features=tiny
+
+    make VIMRTDIR= DESTDIR=$PKG installvimbin
+}

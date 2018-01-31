@@ -1,0 +1,16 @@
+# Description: Compatibility libraries
+# URL:         http://cruxppc.sunsite.dk/downloads/
+# Maintainer:  CRUX PPC team http://cruxppc.sunsite.dk
+# PPC!=
+
+name=libstdc++-compat64
+version=3.1
+release=1
+source=(libstdc++.so.5.0.7)
+
+build() {
+    mkdir -p $PKG/usr/lib64
+    install -m 755 libstdc++.so.5.0.7 $PKG/usr/lib64
+    ln -s libstdc++.so.5.0.7 $PKG/usr/lib64/libstdc++.so.5.0.5
+    ln -s libstdc++.so.5.0.7 $PKG/usr/lib64/libstdc++.so.5
+}

@@ -1,0 +1,44 @@
+# Description: The GNU Binutils are a collection of binary tools
+# URL: http://www.gnu.org/software/binutils/
+# Maintainer:  CRUX PPC Team
+# Depends on: ppl, cloog-ppl
+# PPC!=upstream:
+
+name=binutils
+version=2.20
+release=1
+source=(ftp://ftp.gnu.org/pub/gnu/$name/$name-$version.tar.bz2 \
+	ftp://ftp.cruxppc.org/cruxppc/distfiles/2.6/$name-$version-posix-1.patch \
+	ftp://ftp.cruxppc.org/cruxppc/distfiles/2.6/$name-$version-genscripts_multilib-1.patch)
+
+build() {
+	export MAKEFLAGS="-j1"
+	patch -d $name-$version -p1 -i $SRC/$name-$version-posix-1.patch
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then
+		patch -d $name-$version -p1 -i $SRC/$name-$version-genscripts_multilib-1.patch
+	fi
+
+	find $name-$version -name "Makefile.in" -exec sed -i -e '/^SUBDIRS/s/doc//' -e '/^SUBDIRS/s/po//' \
+	-e '/^\w[^:]*:/s/\ info$/\ /' -e '/^\w[^:]*:/s/\ info\ /\ /' -e '/^\w[^:]*:/s/install-info//' {} \; 
+
+    	mkdir build
+    	cd build
+
+ 	AR=ar AS=as ../$name-$version/configure --prefix=/usr \
+		--enable-shared --mandir=/usr/man \
+		--disable-nls \
+		--enable-64-bit-bfd \
+		--host=$MACHTYPE
+	
+	make tooldir=/usr
+	make check
+	make tooldir=/usr DESTDIR=$PKG install
+	cp ../$name-$version/include/libiberty.h $PKG/usr/include
+	install -D -m 644 ../$name-$version/{gas,binutils}/doc/*.1 $PKG/usr/man/man1
+        install -D -m 644 ../$name-$version/binutils/doc/cxxfilt.man $PKG/usr/man/man1/c++filt.1
+	sed -i "s|-L$SRC[^ ]* ||g" $PKG/usr/lib/libbfd.la
+	
+	rm -rf $PKG/usr/{info,share}
+	rm -r $PKG/usr/man/man1/{dlltool,nlmconv,windmc,windres}.*
+}

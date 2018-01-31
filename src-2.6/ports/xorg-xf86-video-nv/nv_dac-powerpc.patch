@@ -1,0 +1,13 @@
+--- a/src/nv_dac.c      2008-07-25 02:48:51.000000000 +0200
++++ b/src/nv_dac.c      2009-02-03 22:52:20.000000000 +0100
+@@ -101,8 +101,6 @@
+        horizStart = horizTotal - 5;
+        horizEnd = horizTotal - 2;
+        horizBlankEnd = horizTotal + 4;
+-       if(pNv->Architecture == NV_ARCH_30)
+-           horizTotal += 2;
+     }
+
+     pVga->CRTC[0x0]  = Set8Bits(horizTotal);
+
+

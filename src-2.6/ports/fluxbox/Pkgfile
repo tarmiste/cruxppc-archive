@@ -1,0 +1,26 @@
+# Description: wm based on blackbox
+# URL: http://www.fluxbox.org/ 
+# Depends on: freetype, imlib2, xorg-libxft, xorg-libxrandr, xorg-libxpm, xorg-libxinerama
+# Maintainer: acrux, acrux at linuxmail dot org
+# PPC!=:
+
+name=fluxbox
+version=1.1.1
+release=2
+source=(http://dl.sourceforge.net/sourceforge/$name/$name-$version.tar.bz2 \
+	macrocmd-crash-1.1.1.patch fbsetbg-quiet-1.1.1.patch mousefocus-1.1.1.patch)
+build() {
+	cd $name-$version
+	patch -p1 -i $SRC/macrocmd-crash-1.1.1.patch
+	patch -p1 -i $SRC/fbsetbg-quiet-1.1.1.patch
+	patch -p1 -i $SRC/mousefocus-1.1.1.patch
+
+	./configure --prefix=/usr --mandir=/usr/man \
+	--with-gnu-ld --enable-shared --disable-nls \
+	--enable-imlib2 \
+	--enable-xinerama \
+	--disable-kde --disable-gnome
+	
+	make
+	make DESTDIR=$PKG install
+}

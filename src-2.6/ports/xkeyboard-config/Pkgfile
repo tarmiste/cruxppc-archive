@@ -1,0 +1,27 @@
+# Description: X keyboard configuration database
+# URL: http://www.freedesktop.org/wiki/Software_2fXKeyboardConfig
+# Maintainer: Tilman Sauerbeck, tilman at crux dot nu
+# Depends on: xorg-xkbcomp, intltool
+# PPC!=:
+
+name=xkeyboard-config
+version=1.7
+release=2
+source=(http://xlibs.freedesktop.org/xkbdesc/$name-$version.tar.bz2 \
+	fix-winkey-as-3rd-level-chooser.patch)
+
+build() {
+	cd xkeyboard-config-$version
+	patch -p1 -i $SRC/fix-winkey-as-3rd-level-chooser.patch
+
+	./configure --prefix=/usr \
+	            --with-xkb-base=/usr/share/X11/xkb \
+	            --with-xkb-rules-symlink=xorg
+
+	make
+	make DESTDIR=$PKG install
+
+	rm -rf $PKG/usr/share/locale
+
+	ln -s /var/lib/xkb $PKG/usr/share/X11/xkb/compiled 
+}

@@ -1,0 +1,24 @@
+# Description:	package for creating, destroying, resizing, checking and copying partitions and filesystem
+# URL: http://www.gnu.org/software/parted/
+# Maintainer: acrux, acrux at linuxmail dot org
+# Depends on: e2fsprogs, readline, reiserfsprogs, libdevmapper
+# PPC!= 
+
+name=parted
+version=1.9.0
+release=2
+source=(http://ftp.gnu.org/gnu/$name/$name-$version.tar.gz)
+
+build () {
+	cd $name-$version
+
+	./configure --prefix=/usr --mandir=/usr/man \
+	--with-gnu-ld --without-readline --enable-fs \
+	--disable-Werror --disable-rpath \
+	--disable-nls --disable-debug \
+
+	make
+	make DESTDIR=$PKG install
+
+	rm -rf $PKG/usr/{share/info,man/pt_BR}
+}

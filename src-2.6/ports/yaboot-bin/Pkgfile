@@ -1,0 +1,15 @@
+# Description: Yaboot is a Power Architecture bootloader for Open Firmware based machines 
+# URL:         http://yaboot.ozlabs.org/
+# Maintainer:  CRUX PPC team
+# Depends on:  hfsutils, nvsetenv, mac-fdisk
+# PPC!= 32bit binaries for 64bit machines
+
+name=yaboot-bin
+version=1.3.14
+release=2
+source=(ftp://ftp.crux.it/cruxppc/distfiles/2.6/yaboot-$version-$release.pkg.tar.gz)
+
+build() {
+        mv $SRC/usr $PKG
+}
+

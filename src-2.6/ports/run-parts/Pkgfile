@@ -1,0 +1,17 @@
+# Description: A small utility from debianutils used by pbbuttonsd
+# URL: http://www.debian.org/
+# Maintainer:  CRUX PPC team http://cruxppc.sunsite.dk
+# PPC!=
+
+name=run-parts
+version=3.2.2
+release=1
+source=(http://ftp.debian.org/debian/pool/main/d/debianutils/debianutils_${version}.tar.gz)
+
+build() {
+    cd debianutils-$version
+    ./configure --prefix=/usr
+    make run-parts
+    install -D -m 755 run-parts $PKG/usr/bin/run-parts
+    install -D -m 644 run-parts.8 $PKG/usr/man/man8/run-parts.8
+}

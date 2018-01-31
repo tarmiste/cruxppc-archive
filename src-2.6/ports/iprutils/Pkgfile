@@ -1,0 +1,20 @@
+# Description: IBM's tools for support of the ipr SCSI controller
+# URL: http://sourceforge.net/projects/iprdd/
+# Maintainer: CRUX PPC Team
+# Depends on: ncurses 
+# PPC!=: 
+
+name=iprutils
+version=2.2.18
+release=1
+source=(http://dl.sourceforge.net/sourceforge/iprdd/$name-$version-src.tgz \
+	rc.iprinit)
+build() {
+    cd $name
+
+    sed -i "s|usr/share|usr|g" Makefile
+
+    make 
+    make INSTALL_MOD_PATH=$PKG install
+    install -D -m 0755 $SRC/rc.iprinit $PKG/etc/rc.d/iprinitd
+}

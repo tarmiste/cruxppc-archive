@@ -1,0 +1,18 @@
+# Description: Library of JPEG support functions.
+# URL:         http://www.ijg.org/
+# Maintainer:  Tilman Sauerbeck, tilman at crux dot nu
+# PPC!= specify libtool to make 
+
+name=libjpeg
+version=6b
+release=1
+source=(ftp://ftp.uni-frankfurt.de/pub/Mirrors2/gentoo.org/distfiles/jpegsrc.v$version.tar.gz)
+
+build() {
+    cd jpeg-$version
+   
+    ./configure --prefix=/usr --enable-shared --enable-static
+    make LIBTOOL=libtool
+    mkdir -p $PKG/usr/include $PKG/usr/lib
+    make LIBTOOL=libtool prefix=/$PKG/usr install-lib
+}

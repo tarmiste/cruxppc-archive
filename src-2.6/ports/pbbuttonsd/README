@@ -1,0 +1,10 @@
+pbbuttonsd-0.8
+
+With  Pbbuttonsd 0.8 the format of the configuratione file slightly changed. It uses now the keyfile format 
+defined by the freedesktop organisation. It is very similar to the  old  format  which  was  proprietary  to 
+pbbuttonsd but is not exactly the same. The main advantage of the new file format is that pbbuttonsd can now 
+use code of the glib to pare it, instead doing everything by itself.
+
+the name is changed too:
+/etc/pbbuttonsd.conf	<= 0.7.9
+/etc/pbbuttonsd.cnf	>=0.8.0

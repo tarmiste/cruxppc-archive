@@ -1,0 +1,24 @@
+# Description: X Window System server
+# URL: http://xorg.freedesktop.org
+# Maintainer: CRUX PPC Team - http://cruxppc.org/
+# Packager: Tilman Sauerbeck, tilman at crux dot nu
+# Depends on: mesa3d, xorg-bdftopcf, xorg-mkfontdir, xorg-mkfontscale, xorg-xf86driproto, xorg-libxkbui, xorg-xcmiscproto, xorg-scrnsaverproto, xorg-bigreqsproto, xorg-libxtst, xorg-libdmx, xorg-libxxf86misc, xorg-libxaw, xorg-libxvmc, xorg-libxi, xorg-libxres, xorg-libxcomposite, xorg-libxinerama, xorg-libxrandr, xorg-libxft, xorg-libxcursor, xorg-libxxf86dga, xorg-libpixman, xorg-libpciaccess
+# PPC!=:
+
+name=xorg-server
+version=1.7.4
+release=1
+source=(http://xorg.freedesktop.org/releases/individual/xserver/$name-$version.tar.bz2)
+
+build() {
+	cd $name-$version
+	./configure --prefix=/usr --enable-dri \
+	            --localstatedir=/var --mandir=/usr/man \
+	            --with-xkb-output=/var/lib/xkb \
+		    --enable-glx-tls
+
+	make
+	make DESTDIR=$PKG install
+
+	rmdir $PKG/var/log
+}

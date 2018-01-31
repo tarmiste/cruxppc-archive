@@ -1,0 +1,25 @@
+# Description: GNU Midnight Commander
+# URL:         http://www.midnight-commander.org
+# Maintainer:  Juergen Daubert, juergen dot daubert at t-online dot de
+# Depends on:  ncurses glib
+
+name=mc
+version=4.7.0.1
+release=1
+source=(http://www.midnight-commander.org/downloads/$name-$version.tar.lzma)
+
+build () {
+    cd $name-$version
+
+    ./configure --prefix=/usr \
+                --mandir=/usr/man \
+                --libexecdir=/usr/lib \
+                --disable-nls \
+                --with-screen=ncurses
+
+    make
+    make DESTDIR=$PKG install
+
+    rm $PKG/usr/share/mc/{mc.hint.*,extfs/README}
+    rm -r $PKG/usr/{sbin,man/man8}
+}

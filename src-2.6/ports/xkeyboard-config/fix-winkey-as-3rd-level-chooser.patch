@@ -1,0 +1,42 @@
+From b14ee04e84118cd0899f9a1b06b44cfc745dbee2 Mon Sep 17 00:00:00 2001
+From: Alexey Ten (Lynn) <alexeyten+deb@gmail.com>
+Date: Fri, 16 Oct 2009 22:43:16 +0400
+Subject: [PATCH] Fix Win key as third level chooser
+
+https://bugs.launchpad.net/bugs/408397
+https://bugs.freedesktop.org/show_bug.cgi?id=19500
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=531771
+---
+ symbols/pc |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/symbols/pc b/symbols/pc
+index 9f3da66..a359b80 100644
+--- a/symbols/pc
++++ b/symbols/pc
+@@ -32,13 +32,11 @@ xkb_symbols "pc105" {
+     key <LCTL> {	[ Control_L	]	};
+ 
+     key <LWIN> {	[ Super_L			]	};
+-    modifier_map Mod4   { <LWIN> };
+ 
+     key <RTSH> {	[ Shift_R	]	};
+     key <RCTL> {	[ Control_R	]	};
+ 
+     key <RWIN> {	[ Super_R			]	};
+-    modifier_map Mod4   { <RWIN> };
+ 
+     key <MENU> {	[ Menu			]	};
+ 
+@@ -47,6 +45,7 @@ xkb_symbols "pc105" {
+     modifier_map Lock   { Caps_Lock, ISO_Lock };
+     modifier_map Control{ Control_L, Control_R };
+     modifier_map Mod2   { Num_Lock };
++    modifier_map Mod4   { Super_L, Super_R };
+ 
+     //  Fake keys for virtual<->real modifiers mapping 
+     key <LVL3> {	[ ISO_Level3_Shift	]	};
+-- 
+1.6.3.3
+
+

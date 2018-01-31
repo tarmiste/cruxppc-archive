@@ -1,0 +1,39 @@
+# Description: POSIX.1e capabilities library
+# URL: http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/README
+# Maintainer: Antti Nykanen, aon at iki dot fi
+# Depends on: libattr
+# PPC!=:
+
+name=libcap
+version=2.19
+release=2
+source=(ftp://ftp.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-$version.tar.bz2)
+
+build () {
+    cd libcap-$version
+
+    sed -i '/^CFLAGS :=/s/:/\?/' Make.Rules
+
+        # this is a fix for CRUX PPC
+        if [ "$HOSTTYPE" == "powerpc64" ]; then
+                sed -i 's|ld-linux|ld64.so|' Make.Rules
+        else
+                sed -i 's|ld-linux|ld.so|' Make.Rules
+        fi
+
+    make
+    make DESTDIR=$PKG man_prefix=/usr install
+
+        if [ "$HOSTTYPE" == "powerpc64" ]; then
+                install -d $PKG/usr/lib64
+                mv $PKG/lib64/libcap.a $PKG/usr/lib64
+                rm $PKG/lib64/libcap.so
+                ln -s ../../lib64/libcap.so.$version $PKG/usr/lib64/libcap.so
+        else
+                install -d $PKG/usr/lib
+                mv $PKG/lib/libcap.a $PKG/usr/lib
+                rm $PKG/lib/libcap.so
+                ln -s ../../lib/libcap.so.$version $PKG/usr/lib/libcap.so
+        fi
+}
+

@@ -1,0 +1,1079 @@
+diff --git a/ChangeLog b/ChangeLog
+index 21b2f5c..d029fb6 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,46 @@
++2009-08-31  Giuseppe Coviello  <cjg@cruxppc.org>
++
++	* doc/ilenia.8.in: documented the new dependencies_dump way
++
++	* src/dependencies.c (dependencies_dump): installed ports aren't
++	defaultly showed when listing dependencies
++
++2009-08-08  Giuseppe Coviello  <cjg@cruxppc.org>
++
++	* src/repository.c (repositories_dict_init): [bugfix] DT_UNKNOWN
++	aren't considered directory anymore
++
++	* src/local.c (local_update): making local repository dinamically
++	updatable using a script, ".update.sh", in the repository
++	directory self
++
++	* src/ini.c (ini_load): [bugfix] removing correctly comments
++
++	* src/hash.c (hashiterator_new): [bugfix] initializing
++	current_dict and current_position
++
++	* src/exec.c (exec2): added routine to execute synchronously a
++	command in a given working directory
++
++	* src/cache.c (cache_from_repository): using lstat to obtain
++	informations about filesystem's objects
++
++	* src/port.c (port_alias): added method to select an elegible
++	alias for a given port
++	(port_equ): added method
++
++	* src/list.c (list_cat): added method
++
++	* src/hash.c (hash_get_keys): added method
++
++	* src/dict.c (dict_has_key): added method
++	(dict_get_at): added method
++	(dict_get_key_at): added method
++	(dict_get_keys): added method
++
++	* src/dependencies.c: using a new system (based on graph) for
++	dependencies solving and cyclic dependencies checking and managing
++
+ 2008-02-25  Giuseppe Coviello  <cjg@cruxppc.org>
+ 
+ 	* Release 3.4
+diff --git a/doc/ilenia.8.in b/doc/ilenia.8.in
+index cc3edb4..9812766 100644
+--- a/doc/ilenia.8.in
++++ b/doc/ilenia.8.in
+@@ -32,10 +32,12 @@ Shows the list of the installed packages with different version from the ones in
+ the ports tree.
+ .TP
+ .B "\-D, \-\-dependencies"
+-Shows the list of the dependencies of the port(s) in ARG(S). This action can be
+-used with the "\-\-verbose" option to obtain more information (such as the
+-repository where the port is found, or i the port has a README) for each port in
+-the list.
++Shows the list of the dependencies needed to install the port(s) in ARG(S). 
++This action can be used with the "\-\-verbose" option to obtain more 
++information (such as the repository where the port is found, or i the port has 
++a README) for each port in the list.
++To obtain the complete list of dependencies the "\-\-all" options has to be
++used.
+ .TP
+ .B "\-i, \-\-info"
+ Shows information about the port(s) in ARG(S).
+@@ -91,6 +93,8 @@ updated.
+ .B "\-\-all"
+ It is used with the "\-\-remove" or the "\-\-dependents" action to,
+ respectively, remove all dependents packages or show all dependents packages.
++And with the "\-\-dependencies" action to obtain the complete list of the
++dependencies.
+ .TP
+ .B "\-\-cache"
+ Forces the rebuild of the cache.
+@@ -247,7 +251,11 @@ Local repositories are repositories that resides only on the local machine
+ created by the local sysadmin. To let ilenia recognize the admin have to create
+ a file in "/etc/ports/" with ".local" extension (for example: my.local); this
+ file must be a single row, where there is specified the full path of the local
+-repository. For example:
++repository. 
++It's possible to update automatically (i.e.: downloading them from various 
++repositories) adding a shell script called ".updater.sh" in the same directory
++where ports reside; this shell script will be executed in the repository's
++directory. For example:
+ .br
+ # my.local
+ .br
+@@ -257,6 +265,19 @@ PATH="/root/ports"
+ .br
+ # End of file
+ .br
++.br
++#!/bin/bash
++.br
++#
++.br
++# /root/ports/.updater.sh
++.br
++#
++.br
++rsync -aqz cruxppc.org::ports/core/2.5/ilenia/ ilenia
++.br
++# End Of File
++.br
+ .SH SEE ALSO
+ pkgadd(8), pkgrm(8), pkginfo(8), rsync(1), httpup(8)
+ .SH AUTHOR
+diff --git a/src/cache.c b/src/cache.c
+index cc63e95..fd827bb 100644
+--- a/src/cache.c
++++ b/src/cache.c
+@@ -130,6 +130,7 @@ static void cache_from_repository(repository_t * repository, FILE * file)
+ {
+ 	DIR *dir;
+ 	struct dirent *entry;
++	struct stat entry_stat;
+ 
+ 	assert(repository != NULL && file != NULL);
+ 
+@@ -142,7 +143,8 @@ static void cache_from_repository(repository_t * repository, FILE * file)
+ 	while ((entry = readdir(dir))) {
+ 		if (*entry->d_name == '.')
+ 			continue;
+-		if (entry->d_type != DT_DIR && entry->d_type != DT_UNKNOWN)
++		lstat(entry->d_name, &entry_stat);
++		if(!S_ISDIR(entry_stat.st_mode))
+ 			continue;
+ 		cache_parse_pkgfile(repository, entry->d_name, file);
+ 	}
+diff --git a/src/conf.c b/src/conf.c
+index 987c24d..1bd3509 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -233,6 +233,7 @@ void conf_dump(conf_t * self)
+ 	printf("POST_PKGADD = %s\n", self->post_pkgadd);
+ 	printf("ASK_FOR_UPDATE = %d\n", self->ask_for_update);
+ 	printf("NOT_FOUND_POLICY = %s\n", policies[self->not_found_policy]);
++	printf("VERBOSE = %d\n", self->verbose);
+ 	printf("REPOSITORIES_HIERARCHY = ");
+ 	for (i = 0; i < self->repositories_hierarchy->length; i++)
+ 		printf("%s ",
+diff --git a/src/dependencies.c b/src/dependencies.c
+index 4a684da..a41af20 100644
+--- a/src/dependencies.c
++++ b/src/dependencies.c
+@@ -41,11 +41,15 @@ static char *status[] = {
+ 
+ static char *not_found = "[RED]not found[DEFAULT]";
+ 
+-static void deptree_data_dump(port_t * port, unsigned level, dict_t * seen)
++static void deptree_data_dump(port_t * port, hash_t *ports, unsigned level,
++			      dict_t * seen, int all)
+ {
+ 	unsigned i;
+ 	assert(port != NULL && seen != NULL);
+ 
++	if(!all && port->status == PRT_INSTALLED)
++		return;
++
+ 	for (i = 0; i < level * 2; i++)
+ 		printf(" ");
+ 	cprintf(stdout, "+--%s [%s]", port->name, status[port->status]);
+@@ -57,21 +61,23 @@ static void deptree_data_dump(port_t * port, unsigned level, dict_t * seen)
+ 	dict_add(seen, port->name, "");
+ 
+ 	level++;
+-	if (port->dependencies_exploded == NULL) {
+-		printf("%s\n", port->name);
+-		abort();
++	for (i = 0; i < port->dependencies->length; i++) {
++		port_t *p = (port_t *) hash_get(ports, 
++						list_get(port->dependencies,
++							 i));
++		deptree_data_dump(p, ports, level, seen, all);
+ 	}
+-	for (i = 0; i < port->dependencies_exploded->length; i++)
+-		deptree_data_dump(port->dependencies_exploded->elements[i],
+-				  level, seen);
+ }
+ 
+-static void deptree_verbose_data_dump(port_t * port, unsigned level, dict_t *
+-				      seen)
++static void deptree_verbose_data_dump(port_t * port, hash_t *ports, 
++				      unsigned level, dict_t *seen, int all)
+ {
+ 	unsigned i;
+ 	assert(port != NULL && seen != NULL);
+ 
++	if(!all && port->status == PRT_INSTALLED)
++		return;
++
+ 	for (i = 0; i < level * 2; i++)
+ 		printf(" ");
+ 	cprintf(stdout, "+--%s [%s] (%s)", port->name, status[port->status],
+@@ -84,169 +90,206 @@ static void deptree_verbose_data_dump(port_t * port, unsigned level, dict_t *
+ 	dict_add(seen, port->name, "");
+ 
+ 	level++;
+-	for (i = 0; i < port->dependencies_exploded->length; i++)
+-		deptree_verbose_data_dump(port->dependencies_exploded->
+-					  elements[i], level, seen);
++	for (i = 0; i < port->dependencies->length; i++) {
++		port_t *p = (port_t *) hash_get(ports, 
++						list_get(port->dependencies,
++							 i));
++		deptree_verbose_data_dump(p, ports, level, seen, all);
++	}
+ }
+ 
+ static void deplist_dump_port(port_t * port)
+ {
++	if(port->status == PRT_INSTALLED)
++		return;
++
+ 	cprintf(stdout, "%s [%s]\n", port->name, status[port->status]);
+ }
+ 
+ static void deplist_verbose_dump_port(port_t * port)
+ {
++	if(port->status == PRT_INSTALLED)
++		return;
++
+ 	cprintf(stdout, "%s [%s] %s(%s)\n", port->name, status[port->status],
+ 		port_have_readme(port) ? "[BLUE]README[DEFAULT] " : "",
+ 		port->repository != NULL ? port->repository->name : not_found);
+ }
+ 
+-static inline void dependencies_explode(port_t * port, hash_t * ports_hash, 
+-					dict_t * aliases, dict_t * not_founds)
++static void deplist_dump_port_all(port_t * port)
+ {
+-	unsigned i, j;
+-	port_t *dport, *aport;
+-	list_t *list;
+-	assert(port != NULL);
++	cprintf(stdout, "%s [%s]\n", port->name, status[port->status]);
++}
+ 
+-	if (port->dependencies_exploded != NULL)
+-		return;
++static void deplist_verbose_dump_port_all(port_t * port)
++{
++	cprintf(stdout, "%s [%s] %s(%s)\n", port->name, status[port->status],
++		port_have_readme(port) ? "[BLUE]README[DEFAULT] " : "",
++		port->repository != NULL ? port->repository->name : not_found);
++}
+ 
+-	port->dependencies_exploded = list_new();
+-	for (i = 0; i < port->dependencies->length; i++) {
+-		dport =
+-		    hash_get(ports_hash,
+-			     (char *)port->dependencies->elements[i]);
+-		if (dport == NULL && (dport = dict_get(not_founds,
+-						       (char
+-							*)port->dependencies->
+-						       elements[i])) == NULL) {
+-			dport =
+-			    port_new(xstrdup
+-				     ((char *)port->dependencies->elements[i]),
+-				     xstrdup(""), NULL, list_new(), NULL);
+-			dport->status = PRT_NOTINSTALLED;
+-			dict_add(not_founds, (char
+-					      *)port->dependencies->elements[i],
+-				 dport);
+-		}
+-		if (dport->status == PRT_NOTINSTALLED &&
+-		    (list = dict_get(aliases, dport->name))) {
+-			for (j = 0; j < list->length; j++) {
+-				aport = hash_get(ports_hash, list->elements[j]);
+-				if (aport == NULL)
+-					continue;
+-				if (aport->status != PRT_NOTINSTALLED) {
+-					dport = aport;
+-					break;
+-				}
+-			}
+-		}
+-		list_append(port->dependencies_exploded, dport);
+-		dependencies_explode(dport, ports_hash, aliases, not_founds);
+-	}
++static port_t *port_new_not_found(char *name)
++{
++	port_t *self = port_new(xstrdup(name), xstrdup(""), NULL, list_new(),
++				NULL);
++	self->status = PRT_NOTINSTALLED;
++	return self;
+ }
+ 
+-static int dependencies_compact_and_check(list_t *stack, hash_t *ports_hash,
+-					  dict_t *aliases, dict_t *not_founds,
+-					  dict_t *seen, unsigned deep)
++/* = build recursively the adjacencies matrix representing the graph of
++   dependencies of the port = */
++static void build_adj_matrix(dict_t *G, port_t *port, hash_t *ports, 
++			 dict_t *aliases,  dict_t *not_founds)
+ {
+-	unsigned i;
+-	port_t *port;
++	/* == checking if the port went already inserted == */
++	if(dict_get(G, port->name) != NULL)
++		return;
+ 
+-	assert(stack != NULL);
++	/* == add the port to the matrix == */
++	list_t *adjacencies = list_new();
++	dict_add(G, port->name, adjacencies);
+ 
+-	if(stack->length == 0)
+-		return 0;
+-	
+-	port = list_get_port(stack, 0);
+-
+-	dependencies_explode(port, ports_hash, aliases, not_founds);
+-
+-	deep++;
+-
+-	for(i = 0; i < port->dependencies_exploded->length; i++) {
+-		if(list_get_port(port->dependencies_exploded, i)->deep == 0)
+-			dict_add(seen,
+-				 list_get_port(port->dependencies_exploded,
+-					       i)->name,
+-				 list_get_port(port->dependencies_exploded, i));
+-		if(list_get_port(port->dependencies_exploded, i)->deep < deep)
+-			list_get_port(port->dependencies_exploded, i)->deep =
+-				deep;
+-		if(list_get_port(port->dependencies_exploded,i)->cyclic_dependencies_status
+-		   == CYCLIC_DEPENDENCIES_EXIST 
+-		   || (list_get_port(port->dependencies_exploded,i)->cyclic_dependencies_status
+-		   == CYCLIC_DEPENDENCIES_NOT_CHECKED 
+-		       && list_get_position(stack, port_query_by_name, 
+-					    list_get_port(port->dependencies_exploded, 
+-							  i)->name)!= -1)) {
+-			error("Found a cyclic dependence in: %s (%s<==>%s)!", 
+-			      list_get_port(stack, 0)->name,
+-			      list_get_port(stack, 0)->name,
+-			      list_get_port(port->dependencies_exploded, i)->name);
+-			
+-			return 1;
+-		}
+-		
+-		list_prepend(stack, list_get_port(port->dependencies_exploded, 
+-						  i));
+-		if (dependencies_compact_and_check(stack, ports_hash, aliases,
+-						   not_founds, seen, deep) != 0)
+-						  {
+-			list_get_port(stack, 0)->cyclic_dependencies_status =
+-				CYCLIC_DEPENDENCIES_EXIST;
+-			return 1;
++	/* == fill the adjiacencies == */
++	unsigned i;
++	for(i = 0; i < port->dependencies->length; i++) {
++		char *name = list_get(port->dependencies, i);
++
++		/* === checking if the port is found in ports tree === */
++		port_t *p = hash_get(ports, name);
++		if(p == NULL) {
++			p = port_new_not_found(name);
++			dict_add(not_founds, name, p);
+ 		}
+-		list_get_port(stack, 0)->cyclic_dependencies_status =
+-			CYCLIC_DEPENDENCIES_CHECKED;
+-		list_remove(stack, 0, NULL);
++
++		/* === substuting the port with an honourable alias === */
++		p = port_alias(p, ports, aliases);
++
++		/* === add the dependencies to the matrix === */
++		list_append(adjacencies, p->name);
++		build_adj_matrix(G, p, ports, aliases, not_founds);
+ 	}
+-	
+-	return 0;
+ }
+ 
+-static list_t *dependencies_list_merge(list_t * list1, list_t * list2)
++/* = allocate and initialize a dynamic int to be used in list_t and dict_t
++   structures = */
++int *int_new(int value)
+ {
+-	unsigned i;
+-	dict_t *dict1;
+-	port_t *port;
++	int *self = xmalloc(sizeof(int));
++	*self = value;
++	return self;
++}
+ 
+-	dict1 = dict_new();
++static char *black = "black";
++static char *gray = "gray";
++static char *white = "white";
+ 
+-	for (i = 0; i < list1->length; i++) {
+-		port = list1->elements[i];
+-		dict_add(dict1, port->name, port);
++/* = provide a dsf on the graph G starting from the node u, it's a subroutine
++   for the topological sort algorithm = */
++static void topological_dsf(dict_t *G, list_t *L, char *u, dict_t *color, 
++		    dict_t *f, int *time)
++{
++	dict_add(color, u, gray);
++	*time = *time + 1; 
++	list_t *adj = dict_get(G, u);
++	unsigned i;
++	for(i = 0; i < adj->length; i++) {
++		char *v = list_get(adj, i);
++		if(dict_get(color, v) == white)
++			topological_dsf(G, L, v, color, f, time);
+ 	}
++	dict_add(color, u, black);
++	*time = *time + 1;
++	dict_add(f, u, int_new(*time));
++	list_append(L, u);
++}
+ 
+-	for (i = 0; i < list2->length; i++) {
+-		port = list2->elements[i];
+-		if (dict_get(dict1, port->name) == NULL) {
+-			dict_add(dict1, port->name, "");
+-			list_append(list1, port);
++/* = after applying the topological sort on G a vector, f, containing the time
++   of visit of each node; in a dag for each oriented edge (u, v) we have that 
++   f[v] < f[u], so this property is here used to detect and find cycles = */
++static void search_cycle(dict_t *G, dict_t *f, dict_t *cycles)
++{
++	list_t *V = dict_get_keys(G);
++	unsigned i, j;
++	for(i = 0; i < V->length; i++) {
++		char *u = list_get(V, i);
++		list_t *adj = dict_get(G, u);
++		for(j = 0; j < adj->length; j++) {
++			char *v = list_get(adj, j);
++			if(*((int *)dict_get(f, v))
++			   >= *((int *) dict_get(f, u))) {
++				dict_add(cycles, u, xstrdup(v));
++			}
+ 		}
+ 	}
++}
+ 
+-	dict_free(dict1, NULL);
++/* = the topological sort algorithm is used to obtain a sorted list of
++   dependencies from the dependencies graph = */
++static void topological_sort(dict_t *G, list_t *L, dict_t *C)
++{
++	list_t *V = dict_get_keys(G);
++	unsigned i;
++	dict_t *color = dict_new();
++	dict_t *f = dict_new();
++	int time = 0;
++
++	for(i = 0; i < V->length; i++) {
++		dict_add(color, list_get(V, i), white);
++		dict_add(f, list_get(V, i), int_new(0
++));
++	}
++	
++	for(i = 0; i < V->length; i++) {
++		char *u = list_get(V, i);
++		if(dict_get(color, u) == white)
++			topological_dsf(G, L, u, color, f, &time);
++	}
+ 
+-	return list1;
++	search_cycle(G, f, C);
++	dict_free(color, NULL);
++	dict_free(f, free);
+ }
+ 
+-static int port_deep_cmp(void *port1, void *port2)
++static void manage_cycles(dict_t *G, dict_t *C, hash_t *ports)
+ {
+-	return ((int)PORT(port2)->deep) - ((int)PORT(port1)->deep);
+-}
++	if(C->length == 0)
++		return;
++	char *u = C->elements[0]->key;
++	char *v = C->elements[0]->value;
++	port_t *p = hash_get(ports, v);
++
++	if(p->status != PRT_NOTINSTALLED) {
++		/* remove the v dependence from u and retry with
++		   dependencies_list */
++		warning("Breackable dependencies cycle found: %s <-> %s. "
++			"Removing the %s dependence from %s.", u, v, v, u);
++		list_t *adj = dict_get(G, u);
++		list_remove(adj, list_get_position(adj, strequ, v), NULL);
++		return;
++	}
+ 
++	/* giving up if u and v are the same */
++	if(strcmp(u, v) == 0)
++		return;
+ 
+-static inline list_t *dependencies_list_from_dict(dict_t *seen)
+-{
+-	unsigned i;
+-	list_t *dependencies;
+-	
+-	dependencies = list_new_with_size(seen->length);
+-	for(i=0;i<seen->length;i++)
+-		list_append(dependencies, dict_get_port_at(seen, i));
+-	return list_sort(dependencies, port_deep_cmp);
++	/* adds to all ports that dependes from v the dependencies of v, then
++	   remove all dependencies to v and retry with dependencies_list */
++	warning("Breackable dependencies cycle found: %s <-> %s. "
++		"Replacing all accurences of %s with its dependencies.",
++		u, v, u);
++	list_t *v_adj = dict_get(G, v);
++	list_t *G_keys = dict_get_keys(G);
++	unsigned j;
++	for(j = 0; j < G_keys->length; j++) {
++		char *z = list_get(G_keys, j);
++		list_t *adj = dict_get(G, z);
++		if(list_get_position(adj, strequ, v) < 0)
++			continue;
++		list_cat(adj, v_adj, NULL);
++	}
++	list_free(v_adj, NULL);
++	dict_add(G, v, list_new());
++	list_free(G_keys, NULL);
+ }
+ 
+ list_t *dependencies_list(list_t * self, char *port_name, hash_t * ports_hash,
+@@ -254,9 +297,6 @@ list_t *dependencies_list(list_t * self, char *port_name, hash_t * ports_hash,
+ 			  enable_xterm_title)
+ {
+ 	port_t *port;
+-	list_t *deplist;
+-	list_t *stack;
+-	dict_t *seen;
+ 
+ 	assert(port_name != NULL && ports_hash != NULL && aliases != NULL &&
+ 	       self != NULL);
+@@ -265,23 +305,59 @@ list_t *dependencies_list(list_t * self, char *port_name, hash_t * ports_hash,
+ 		warning("%s not found!", port_name);
+ 		return NULL;
+ 	}
++
++	dict_t *G = dict_new();
++	build_adj_matrix(G, port, ports_hash, aliases, not_founds);
++
++	list_t *L = NULL;;
++	dict_t *C = NULL;
++	char *previous_u = xstrdup("");
++	char *previous_v = xstrdup("");
+ 	
+-	if (enable_xterm_title)
+-		xterm_set_title("Calculating dependencies ...");
+-	stack = list_new();
+-	list_append(stack, port);
+-	seen = dict_new();
+-	if(dependencies_compact_and_check(stack, ports_hash, aliases,
+-					  not_founds, seen, 0)) {
+-		list_free(stack, NULL);
++	do {
++		if(C != NULL && C->length > 0) {
++			free(previous_u);
++			free(previous_v);
++			previous_u = xstrdup(C->elements[0]->key);
++			previous_v = xstrdup(C->elements[0]->value);
++		}
++		if(L != NULL)
++			list_free(L, NULL);
++		if(C != NULL)
++			dict_free(C, free);
++		L = list_new();
++		C = dict_new();
++		topological_sort(G, L, C);
++		manage_cycles(G, C, ports_hash);
++	} while(C->length > 0 
++		&& (strcmp(previous_u, C->elements[0]->key) != 0
++		    || strcmp(previous_v, C->elements[0]->value) != 0));
++
++	if(C->length != 0) {
++		/* unbreackable cycles found, giving up */
++		unsigned i;
++		for(i = 0; i < C->length; i++)
++			error("Unbreackable dependencies cycle found: "
++			      "%s <-> %s.", C->elements[i]->key,
++			      (char *) C->elements[i]->value);
++		list_free(L, NULL);
++		dict_free(C, free);
+ 		return NULL;
+ 	}
+-	list_free(stack, NULL);
+-	dict_add(seen, port->name, port);
+-	deplist = dependencies_list_from_dict(seen);
+-	dict_free(seen, NULL);
+-	dependencies_list_merge(self, deplist);
+-	list_free(deplist, NULL);
++
++	unsigned i;
++	for(i = 0; i < L->length; i++) {
++		port_t *p = hash_get(ports_hash, (char *) list_get(L, i));
++		if(p == NULL) 
++			p = dict_get(not_founds, (char *) list_get(L, i));
++		if(list_get_position(self, port_equ, p) >= 0)
++			continue;
++		list_append(self, p);
++	}
++
++	list_free(L, NULL);
++	dict_free(C, free);
++
+ 	return self;
+ }
+ 
+@@ -303,7 +379,6 @@ list_t *dependencies_multiple_list(list_t *ports_name,
+ 			list_remove(ports_name, i--, NULL);
+ 			continue;
+ 		}
+-		dependencies_explode(port, ports_hash, aliases, not_founds);
+ 	}
+ 	
+ 	self = list_new();
+@@ -318,7 +393,7 @@ list_t *dependencies_multiple_list(list_t *ports_name,
+ void
+ dependencies_dump(list_t * ports_name, hash_t * ports_hash, dict_t * aliases,
+ 		  dict_t * not_founds, int tree, int verbose, 
+-		  int enable_xterm_title)
++		  int enable_xterm_title, int all)
+ {
+ 	unsigned i;
+ 	port_t *port;
+@@ -336,7 +411,6 @@ dependencies_dump(list_t * ports_name, hash_t * ports_hash, dict_t * aliases,
+ 			list_remove(ports_name, i--, NULL);
+ 			continue;
+ 		}
+-		dependencies_explode(port, ports_hash, aliases, not_founds);
+ 	}
+ 
+ 	if (tree) {
+@@ -345,9 +419,11 @@ dependencies_dump(list_t * ports_name, hash_t * ports_hash, dict_t * aliases,
+ 					(char *)ports_name->elements[i]);
+ 			seen = dict_new();
+ 			if (verbose)
+-				deptree_verbose_data_dump(port, 0, seen);
++				deptree_verbose_data_dump(port, ports_hash, 
++							  0, seen, all);
+ 			else
+-				deptree_data_dump(port, 0, seen);
++				deptree_data_dump(port, ports_hash, 0, seen,
++						  all);
+ 			dict_free(seen, NULL);
+ 		}
+ 	} else {
+@@ -359,9 +435,16 @@ dependencies_dump(list_t * ports_name, hash_t * ports_hash, dict_t * aliases,
+ 		if (deplist == NULL)
+ 			return;
+ 		if (verbose)
+-			list_dump(deplist, deplist_verbose_dump_port);
++			if(all)
++				list_dump(deplist,
++					  deplist_verbose_dump_port_all);
++			else
++				list_dump(deplist, deplist_verbose_dump_port);
+ 		else
+-			list_dump(deplist, deplist_dump_port);
++			if(all)
++				list_dump(deplist, deplist_dump_port_all);
++			else
++				list_dump(deplist, deplist_dump_port);
+ 		list_free(deplist, NULL);
+ 	}
+ }
+diff --git a/src/dependencies.h b/src/dependencies.h
+index 01c778d..74cae23 100644
+--- a/src/dependencies.h
++++ b/src/dependencies.h
+@@ -33,7 +33,7 @@ list_t *dependencies_list(list_t * self, char *port_name, hash_t * ports_hash,
+ void
+ dependencies_dump(list_t * ports_name, hash_t * ports_hash, dict_t * aliases,
+ 		  dict_t * not_founds, int tree, int verbose, int
+-		  enable_xterm_title);
++		  enable_xterm_titlei, int all);
+ list_t *dependents_list(char *port_name, hash_t * ports_hash, dict_t * aliases,
+ 			int all, int enable_xterm_title);
+ list_t *dependencies_multiple_list(list_t *ports_name, 
+diff --git a/src/dict.c b/src/dict.c
+index 5d795ac..f50d0e0 100644
+--- a/src/dict.c
++++ b/src/dict.c
+@@ -162,6 +162,59 @@ void *dict_get(dict_t * self, char *key)
+ 	return NULL;
+ }
+ 
++int dict_has_key(dict_t * self, char *key)
++{
++	element_t *element;
++	unsigned hash;
++
++	assert(self);
++
++	if (!self->length)
++		return 0;
++	
++	sdbm_hash(key, hash);
++	if ((element = dict_element_find(self, hash)))
++		return 1;
++
++	return 0;
++}
++
++void *dict_get_at(dict_t * self, int position)
++{
++	assert(self != NULL);
++
++	if (position < 0 && (position = self->length - 1 + position) < 0)
++		return NULL;
++
++	if ((unsigned)position >= self->length)
++		position = self->length - 1;
++
++	return self->elements[position]->value;
++}
++
++char *dict_get_key_at(dict_t * self, int position)
++{
++	assert(self != NULL);
++
++	if (position < 0 && (position = self->length - 1 + position) < 0)
++		return NULL;
++
++	if ((unsigned)position >= self->length)
++		position = self->length - 1;
++
++	return xstrdup(self->elements[position]->key);
++}
++
++list_t *dict_get_keys(dict_t *self)
++{
++	assert(self != NULL);
++	list_t *keys = list_new_with_size(self->length);
++	unsigned i;
++	for(i = 0; i < self->length; i++)
++		list_append(keys, xstrdup(self->elements[i]->key));
++	return keys;
++}
++
+ dict_t *dict_remove(dict_t * self, char *key, void data_free(void *))
+ {
+ 	element_t *element;
+diff --git a/src/dict.h b/src/dict.h
+index c304fc0..67a1c14 100644
+--- a/src/dict.h
++++ b/src/dict.h
+@@ -22,6 +22,7 @@
+ 
+ #ifndef _DICT_H
+ #define _DICT_H
++#include "list.h"
+ 
+ typedef struct {
+ 	char *key;
+@@ -40,6 +41,10 @@ dict_t *dict_new(void);
+ void dict_free(dict_t * self, void data_free(void *));
+ dict_t *dict_add(dict_t * self, char *key, void *data);
+ void *dict_get(dict_t * self, char *key);
++int dict_has_key(dict_t * self, char *key);
++void *dict_get_at(dict_t * self, int position);
++char *dict_get_key_at(dict_t * self, int position);
++list_t *dict_get_keys(dict_t *self);
+ dict_t *dict_remove(dict_t * self, char *key, void data_free(void *));
+ void dict_dump(dict_t * self, void data_dump(void *));
+ #define dict_free(self, data_free) dict_free((self), \
+diff --git a/src/exec.c b/src/exec.c
+index fff6755..56644b5 100644
+--- a/src/exec.c
++++ b/src/exec.c
+@@ -209,3 +209,14 @@ int exec(char *command, char *args[])
+ {
+ 	return exechook2(command, args, stdout_hook, NULL, stderr_hook, NULL);
+ }
++
++int exec2(char *command, char *workdir, char *args[])
++{
++	char *currentdir;
++	int status;
++	currentdir = get_current_dir_name();
++	chdir(workdir);
++	status = exechook2(command, args, stdout_hook, NULL, stderr_hook, NULL);
++	chdir(currentdir);
++	return status;
++}
+diff --git a/src/exec.h b/src/exec.h
+index cbda7b7..ff8b762 100644
+--- a/src/exec.h
++++ b/src/exec.h
+@@ -34,5 +34,6 @@ int execlogp(char *command, char *args[], char **log);
+ int execlog2(char *command, char *args[], char **out_log, char **err_log);
+ int execlog(char *command, char *args[], char **log);
+ int exec(char *command, char *args[]);
++int exec2(char *command, char *workdir, char *args[]);
+ 
+ #endif
+diff --git a/src/hash.c b/src/hash.c
+index 8570596..dec2c13 100644
+--- a/src/hash.c
++++ b/src/hash.c
+@@ -128,6 +128,23 @@ void hash_dump(hash_t * self, void data_dump(void *))
+ 	}
+ }
+ 
++list_t *hash_get_keys(hash_t *self)
++{
++	assert(self != NULL);
++	dict_t *k = dict_new();
++	int i, j;
++	for(i = 0; i < self->size; i++)
++		for(j = 0; j < self->elements[i]->length; j++) {
++			char *key = dict_get_key_at(self->elements[i], j);
++			dict_add(k, key, NULL);
++			free(key);
++		}
++	list_t *keys = dict_get_keys(k);
++	dict_free(k, NULL);
++	return keys;
++}
++
++
+ static inline int get_first(hash_t *hash, unsigned offset_dict, 
+ 			    unsigned offset_position, unsigned *current_dict, 
+ 			    unsigned *current_position)
+@@ -151,9 +168,9 @@ hashiterator_t *hashiterator_new(hash_t *hash)
+ 	assert(hash != NULL);
+ 	self = xmalloc(sizeof(hashiterator_t));
+ 	self->hash = hash;
+-/* 	get_first(self->hash, 0, 0, &self->current_dict,  */
+-/* 		  &self->current_position); */
+ 	self->first = -1;
++	self->current_dict = 0;
++	self->current_position = 0;
+ 	return self;
+ }
+ 
+diff --git a/src/hash.h b/src/hash.h
+index 1c46c98..8f455ed 100644
+--- a/src/hash.h
++++ b/src/hash.h
+@@ -110,6 +110,16 @@ hash_t *hash_remove(hash_t * self, char *key, void data_free(void *));
+ #define hash_dump(self, data_dump) hash_dump((self), \
+                                              (void (*)(void *)) (data_dump))
+ 
++/**
++ * hash_get_keys:
++ * @self: the hash to get the keys from.
++ *
++ * Get the keys found in the hash %self.
++ *
++ * Returns: a list conaining the keys.
++ */
++list_t *hash_get_keys(hash_t *self);
++
+ hashiterator_t *hashiterator_new(hash_t *hash);
+ void *hashiterator_get(hashiterator_t *self);
+ int hashiterator_next(hashiterator_t * self);
+diff --git a/src/ilenia.c b/src/ilenia.c
+index 6d44322..760213c 100644
+--- a/src/ilenia.c
++++ b/src/ilenia.c
+@@ -300,7 +300,7 @@ int main(int argc, char **argv)
+ 				  ports_hash, conf->aliases,
+ 				  not_founds,
+ 				  arguments.tree, arguments.verbose, 
+-				  conf->enable_xterm_title);
++				  conf->enable_xterm_title, arguments.all);
+ 		break;
+ 	case ACT_DEPENDENTS:
+ 		if (!arguments.args->length) {
+diff --git a/src/ini.c b/src/ini.c
+index f96b607..b7ea58e 100644
+--- a/src/ini.c
++++ b/src/ini.c
+@@ -29,8 +29,21 @@
+ #include "str.h"
+ #include "ini.h"
+ 
++	
+ // TODO: split from ilenia 
+ 
++static char *eatcomments(char *line)
++{
++ 	char *cptr;
++
++	cptr = strchr(line, '#');
++
++	if (cptr != NULL)
++	line[cptr - line] = 0;
++
++	return line;
++}
++
+ ini_t *ini_new(char *filepath)
+ {
+ 	ini_t *self;
+@@ -226,6 +239,8 @@ extern int ini_load(ini_t * self)
+ 			continue;
+ 		}
+ 
++		eatcomments(line);
++
+ 		if (*line == '[') {
+ 			free(section);
+ 			section = xmalloc(strlen(line) - 1);
+diff --git a/src/list.c b/src/list.c
+index caf35db..81bc58e 100644
+--- a/src/list.c
++++ b/src/list.c
+@@ -306,3 +306,15 @@ list_t *list_sort(list_t *self, int data_cmp(void *, void *))
+ 	quicksort(self->elements, 0, self->length - 1, data_cmp);
+         return self;
+ }
++
++list_t *list_cat(list_t * self, list_t *other, void *data_copy(void *))
++{
++	assert(self != NULL && other != NULL);
++	unsigned i;
++	for(i = 0; i  < other->length; i++)
++		if(data_copy != NULL)
++			list_append(self, data_copy(list_get(other, i)));
++		else
++			list_append(self, list_get(other, i));
++	return self;
++}
+diff --git a/src/list.h b/src/list.h
+index 5d0e84e..be97b18 100644
+--- a/src/list.h
++++ b/src/list.h
+@@ -47,6 +47,7 @@ list_t *list_swap(list_t * self, unsigned position1, unsigned position2);
+ list_t *list_reverse(list_t * self);
+ char *list_xstrdup(list_t *self, const char * sep, char *data_str(void *));
+ list_t *list_sort(list_t *self, int data_cmp(void *, void *));
++list_t *list_cat(list_t * self, list_t *other, void *data_copy(void *));
+ #define list_free(self, data_free) list_free((self), \
+ 					     (void (*)(void *)) (data_free))
+ #define list_query(self, query, arg) list_query((self), \
+diff --git a/src/local.c b/src/local.c
+index c29f99e..a4ad068 100644
+--- a/src/local.c
++++ b/src/local.c
+@@ -26,6 +26,8 @@
+ #include "memory.h"
+ #include "str.h"
+ #include "local.h"
++#include "file.h"
++#include "exec.h"
+ 
+ repository_t *local_get_repository(driver_t * self, char *supfile,
+ 				   list_t * repositories_hierarchy)
+@@ -70,5 +72,19 @@ repository_t *local_get_repository(driver_t * self, char *supfile,
+ 
+ void local_update(repository_t * repository)
+ {
+-	return;
++	char *updater;
++
++	assert(repository != NULL);
++	
++	updater = xstrdup(repository->path);
++	strappend(&updater, "/.updater.sh");
++	
++	if(!is_file(updater))
++		goto cleanup;
++
++	char *args[] = { "bash", updater, NULL };
++	exec2("/bin/bash", repository->path, args);
++
++  cleanup:
++	free(updater);
+ }
+diff --git a/src/port.c b/src/port.c
+index 3e8e0ff..76d655c 100644
+--- a/src/port.c
++++ b/src/port.c
+@@ -53,7 +53,6 @@ port_t *port_new(char *name, char *version,
+ 	self->description = description;
+ 	self->pkgmk_conf = NULL;
+ 	self->deep = 0;
+-	self->cyclic_dependencies_status = CYCLIC_DEPENDENCIES_NOT_CHECKED;
+ 	return self;
+ }
+ 
+@@ -336,3 +335,44 @@ void port_show_diffs(hash_t * ports, list_t * packages, int enable_xterm_title)
+ 		}
+ 	}
+ }
++
++port_t *port_alias(port_t *self, hash_t *ports, dict_t *aliases)
++{
++	assert(self != NULL && ports != NULL && aliases != NULL);
++
++	/* == checking if there's an alias to honour == */
++	/* === if the port is installed no alias is checked === */
++	if(self->status != PRT_NOTINSTALLED)
++		return self;
++
++	/* === checking if the port has any alias === */
++	list_t *alias = dict_get(aliases, self->name);
++	if(alias == NULL)
++		return self;
++
++	/* === looking for an installed alias, if found it will be the one to
++	   honour === */
++	unsigned j;
++	for(j = 0; j < alias->length; j++) {
++		port_t *a = hash_get(ports, list_get(alias, j));
++		if(a == NULL || a->status == PRT_NOTINSTALLED)
++			continue;
++		return a;
++	}
++
++	/* === the first alias found in ports is the alias to honour === */
++	for(j = 0; j < alias->length; j++) {
++		port_t *a = hash_get(ports, list_get(alias, j));
++		if(a == NULL)
++			continue;
++		return a;
++	}
++
++	/* === no honourable alias found === */
++	return self;
++}
++
++int port_equ(port_t *self, port_t *other)
++{
++	return !strcmp(self->name, other->name);
++}
+diff --git a/src/port.h b/src/port.h
+index 0413449..9b382dd 100644
+--- a/src/port.h
++++ b/src/port.h
+@@ -30,9 +30,6 @@
+ typedef enum {PRT_NOTINSTALLED, PRT_INSTALLED, PRT_DIFF, PRT_OUTDATED,
+ 	      PRT_NEVERINSTALL } port_status_t;
+ 
+-typedef enum { CYCLIC_DEPENDENCIES_NOT_CHECKED, CYCLIC_DEPENDENCIES_CHECKED,
+-	       CYCLIC_DEPENDENCIES_EXIST } port_cyclic_dependencies_status_t;
+-
+ typedef struct {
+ 	char *name;
+ 	char *version;
+@@ -43,7 +40,6 @@ typedef struct {
+ 	unsigned deep;
+ 	char *description;
+ 	char *pkgmk_conf;
+-	port_cyclic_dependencies_status_t cyclic_dependencies_status;
+ } port_t;
+ 
+ port_t *port_new(char *name, char *version,
+@@ -59,6 +55,8 @@ port_t *port_query_by_name(port_t * self, char *name);
+ port_t *port_query_by_description(port_t * self, char *key);
+ void port_show_outdated(hash_t * ports, list_t * packages, int enable_xterm_title);
+ void port_show_diffs(hash_t * ports, list_t * packages, int enable_xterm_title);
++port_t *port_alias(port_t *self, hash_t *ports, dict_t *aliases);
++int port_equ(port_t *self, port_t *other);
+ #define list_get_port(list,i) ((port_t *)((list)->elements[(i)]))
+ #define dict_get_port(dict,name) ((port_t *)(dict_get((dict),(name))))
+ #define dict_get_port_at(dict,i) ((port_t *)((dict)->elements[(i)]->value))
+diff --git a/src/repository.c b/src/repository.c
+index 5fc4a9e..ddc5a9c 100644
+--- a/src/repository.c
++++ b/src/repository.c
+@@ -95,8 +95,6 @@ dict_t *repositories_dict_init(list_t * drivers,
+ 		repository = NULL;
+ 		if (*entry->d_name == '.')
+ 			continue;
+-		if (entry->d_type != DT_UNKNOWN)
+-			continue;
+ 		for (i = 0; i < drivers->length; i++) {
+ 			driver = list_get(drivers, i);
+ 			if ((repository = driver->get_repository(driver,

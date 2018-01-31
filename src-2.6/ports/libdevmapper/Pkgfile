@@ -1,0 +1,27 @@
+# Description: Device mapper userspace library
+# URL:         http://sourceware.org/lvm2/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+
+name=libdevmapper
+version=1.02.40
+release=1
+source=(ftp://sources.redhat.com/pub/lvm2/old/LVM2.2.02.55.tgz)
+
+build() {
+    cd LVM2.2.02.55
+
+    ./configure --prefix=/usr \
+                --sbindir=/sbin \
+                --mandir=/usr/man \
+                --disable-readline \
+                --enable-pkgconfig \
+                --enable-static_link
+
+    make device-mapper
+    make DESTDIR=$PKG install_device-mapper
+
+    mv $PKG/usr/lib/{libdevmapper.a.1.02,libdevmapper.a}
+    install -d $PKG/lib
+    mv $PKG/usr/lib/libdevmapper.so.1.02 $PKG/lib
+    ln -sf ../../lib/libdevmapper.so.1.02 $PKG/usr/lib/libdevmapper.so
+}

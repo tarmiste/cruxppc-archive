@@ -1,0 +1,37 @@
+# Description: A multi-platform toolkit for creating graphical user interfaces
+# URL: http://www.gtk.org/
+# Maintainer: Tilman Sauerbeck, tilman at crux dot nu
+# Depends on: atk, hicolor-icon-theme, libtiff, pango, xorg-libsm, xorg-libxcursor, xorg-libxinerama, xorg-libxrandr
+
+name=gtk
+version=2.18.5
+release=1
+source=(http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.0.tar.bz2 \
+        http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.0-2.18.1.diff.gz \
+        http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.1-2.18.2.diff.gz \
+        http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.2-2.18.3.diff.gz \
+        http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.3-2.18.4.diff.gz \
+        http://download.gnome.org/sources/gtk+/2.18/${name}+-2.18.4-2.18.5.diff.gz \
+	gdk-pixbuf.loaders gtk.immodules \
+	gtk-register.sh)
+
+build () {
+	cd gtk+-2.18.0
+
+	zcat $SRC/${name}+-2.18.0-2.18.1.diff.gz | patch -p1
+	zcat $SRC/${name}+-2.18.1-2.18.2.diff.gz | patch -p1
+	zcat $SRC/${name}+-2.18.2-2.18.3.diff.gz | patch -p1
+	zcat $SRC/${name}+-2.18.3-2.18.4.diff.gz | patch -p1
+	zcat $SRC/${name}+-2.18.4-2.18.5.diff.gz | patch -p1
+
+	./configure --prefix=/usr \
+		--mandir=/usr/man --without-libjasper
+	make
+	make DESTDIR=$PKG install
+	mkdir -p $PKG/usr/etc/gtk-2.0
+	install -m 644 $SRC/{gtk.immodules,gdk-pixbuf.loaders} \
+		$PKG/usr/etc/gtk-2.0/
+	rm -r $PKG/usr/share/{locale,gtk-doc,gtk-2.0} $PKG/usr/bin/gtk-demo
+
+	install -m 0755 $SRC/gtk-register.sh $PKG/usr/bin/gtk-register
+}

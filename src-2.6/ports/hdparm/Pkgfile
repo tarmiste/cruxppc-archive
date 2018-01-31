@@ -1,0 +1,15 @@
+# Description: A shell utility for manipulating Linux IDE drive/driver parameters
+# URL:         http://sourceforge.net/projects/hdparm/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# PPC!= .
+
+name=hdparm
+version=9.27
+release=1
+source=(http://dl.sourceforge.net/sourceforge/$name/$name-$version.tar.gz)
+
+build() {
+    cd $name-$version
+    make -j1
+    make DESTDIR=$PKG mandir=/usr/man install
+}

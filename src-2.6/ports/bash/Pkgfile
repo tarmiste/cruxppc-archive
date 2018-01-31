@@ -1,0 +1,31 @@
+# Description: An sh-compatible command language interpreter
+# URL:         http://cnswww.cns.cwru.edu/~chet/bash/bashtop.html
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# Depends on:  ncurses
+# PPC!=upstream: profile(s)
+
+name=bash
+version=4.1
+release=1
+source=(http://ftp.gnu.org/gnu/$name/$name-4.1.tar.gz \
+        profile.powerpc-unknown-linux-gnu \
+	profile.powerpc64-unknown-linux-gnu)
+
+build() {
+    cd $name-4.1
+
+    ./configure --prefix=/usr \
+                --exec-prefix= \
+                --mandir=/usr/man \
+                --disable-nls \
+                --with-curses \
+		--host=$MACHTYPE 
+    make -j1
+
+    install -D -m 755 bash $PKG/bin/bash
+    install -D -m 644 doc/bash.1 $PKG/usr/man/man1/bash.1
+    install -D -m 644 $SRC/profile.${MACHTYPE} $PKG/etc/profile
+
+    ln -s bash $PKG/bin/sh
+    ln -s bash.1 $PKG/usr/man/man1/sh.1
+}

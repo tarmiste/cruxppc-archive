@@ -1,0 +1,22 @@
+# Description: A powerfull replacement to standard ports utility
+# URL: http://ilenia.berlios.de/
+# Depends on: httpup, rsync
+# Maintainer: acrux, acrux at linuxmail dot org
+# PPC!=
+
+name=ilenia
+version=3.4
+release=8
+source=(http://download.berlios.de/$name/$name-$version.tar.gz \
+	$name-$version.diff)
+
+build () {
+	cd $name-$version
+	patch -p1 < ../$name-$version.diff
+	./configure --prefix=/usr --mandir=/usr/man 
+    
+	make
+	make DESTDIR=$PKG install
+
+	mkdir $PKG/usr/ports
+}
