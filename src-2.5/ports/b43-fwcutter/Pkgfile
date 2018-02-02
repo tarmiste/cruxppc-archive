@@ -1,0 +1,22 @@
+# Description: bcm43xx firmware cutter
+# URL: http://bcm43xx.berlios.de/ 
+# Depends on: 
+# Maintainer: CRUX PPC team http://cruxppc.sunsite.dk
+# PPC!=
+
+name=b43-fwcutter
+version=011
+release=2
+source=(http://bu3sch.de/b43/fwcutter/$name-$version.tar.bz2)
+
+build() {
+	cd $name-$version
+	
+	sed -i "s|/usr/local|/usr|g" Makefile
+	
+	make
+	mkdir -p $PKG/{usr/bin,usr/man/man1}
+	
+	install -D -m 755 $name $PKG/usr/bin
+	install -D -m 644 $name.1 $PKG/usr/man/man1/$name.1
+}

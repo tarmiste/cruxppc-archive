@@ -1,0 +1,19 @@
+# Description: Lets users edit command lines as they are typed in
+# URL:         http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+
+name=readline
+version=5.2.13
+release=1
+source=(http://ftp.gnu.org/gnu/$name/$name-5.2.tar.gz \
+        $name-5.2-001-013.patch inputrc)
+
+build() {
+    cd $name-5.2
+    patch -p0 -i $SRC/$name-5.2-001-013.patch
+    ./configure --prefix=/usr
+    make
+    make DESTDIR=$PKG install
+    install -D -m 644 $SRC/inputrc $PKG/etc/inputrc
+    rm -rf $PKG/usr/info
+}

@@ -1,0 +1,17 @@
+# Description: xorg lib libXp
+# URL: http://xorg.freedesktop.org
+# Maintainer: Giuseppe Coviello <cjg@cruxppc.org>
+# Packager: Giuseppe Coviello <cjg@cruxppc.org>
+# Depends on: xorg-printproto xorg-libxext
+
+name=xorg-libxp
+version=1.0.0
+release=1
+source=(http://xorg.freedesktop.org/archive/X11R7.3/src/everything/libXp-$version.tar.bz2)
+
+build() {
+	cd libXp-$version
+	./configure --prefix=/usr
+	make
+	make DESTDIR=$PKG install
+}

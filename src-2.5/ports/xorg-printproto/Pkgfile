@@ -1,0 +1,17 @@
+# Description: xorg print proto
+# URL: http://xorg.freedesktop.org
+# Maintainer: Giuseppe Coviello <cjg@cruxppc.org>
+# Packager: Giuseppe Coviello <cjg@cruxppc.org>
+# Depends on:
+
+name=xorg-printproto
+version=1.0.3
+release=1
+source=(http://xorg.freedesktop.org/archive/X11R7.3/src/everything/printproto-$version.tar.bz2)
+
+build() {
+	cd printproto-$version
+	./configure --prefix=/usr
+	make
+	make DESTDIR=$PKG install
+}

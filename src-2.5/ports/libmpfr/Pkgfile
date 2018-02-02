@@ -1,0 +1,42 @@
+# Description: The MPFR library is a C library for multiple-precision floating-point computations with correct rounding.
+# URL: http://www.mpfr.org/
+# Maintainer: The Crux PPC Team
+# PPC!=
+
+name=libmpfr
+version=2.4.1
+release=2
+source=(http://www.mpfr.org/mpfr-2.4.1/mpfr-$version.tar.bz2 \
+	$name-$version.patch)
+
+build () {
+	cd mpfr-$version
+	patch -p1 -i $SRC/$name-$version.patch
+
+	if [ "$HOSTTYPE" == "powerpc64" ]; then	
+		mkdir build64
+		cd build64
+		CC="gcc -m64" CXX="g++ -m64" ../configure --prefix=/usr \
+			--mandir=/usr/man \
+			--libdir=/usr/lib64 \
+			--host=powerpc64-unknown-linux-gnu \
+			--enable-shared
+
+		make 
+		make DESTDIR=$PKG install
+
+		cd ..
+	fi
+
+	mkdir build32
+	cd build32
+        CC="gcc -m32" CXX="g++ -m32" ../configure --prefix=/usr \
+                --mandir=/usr/man \
+                --host=powerpc-unknown-linux-gnu \
+                --enable-shared
+
+        make
+        make DESTDIR=$PKG install
+	
+	rm -rf $PKG/usr/share
+}

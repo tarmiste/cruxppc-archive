@@ -1,0 +1,18 @@
+# Description: fdisk program specific for mac partition tables
+# URL: http://www.debian.org
+# Maintainer:  CRUX PPC team http://cruxppc.sunsite.dk
+# PPC!=
+
+name=mac-fdisk
+version=0.1
+release=15
+source=(http://ftp.debian.org/debian/pool/main/m/mac-fdisk/$name\_$version.orig.tar.gz \
+	http://ftp.debian.org/debian/pool/main/m/mac-fdisk/$name\_$version-15.diff.gz)
+
+build() {
+    cd $name-$version.orig
+    zcat ../$name\_$version-15.diff.gz | patch -p1
+    make
+    mkdir -p $PKG/sbin
+    make DESTDIR=$PKG install
+}

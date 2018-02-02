@@ -1,0 +1,216 @@
+diff --git a/doc/ilenia.8.in b/doc/ilenia.8.in
+index cc3edb4..08eac48 100644
+--- a/doc/ilenia.8.in
++++ b/doc/ilenia.8.in
+@@ -247,7 +247,11 @@ Local repositories are repositories that resides only on the local machine
+ created by the local sysadmin. To let ilenia recognize the admin have to create
+ a file in "/etc/ports/" with ".local" extension (for example: my.local); this
+ file must be a single row, where there is specified the full path of the local
+-repository. For example:
++repository. 
++It's possible to update automatically (i.e.: downloading them from various 
++repositories) adding a shell script called ".updater.sh" in the same directory
++where ports reside; this shell script will be executed in the repository's
++directory. For example:
+ .br
+ # my.local
+ .br
+@@ -257,6 +261,15 @@ PATH="/root/ports"
+ .br
+ # End of file
+ .br
++#!/bin/bash
++#
++# /root/ports/updater.sh
++#
++.br
++rsync -aqz cruxppc.org::ports/core/2.5/ilenia/ ilenia
++.br
++# End Of File
++.br
+ .SH SEE ALSO
+ pkgadd(8), pkgrm(8), pkginfo(8), rsync(1), httpup(8)
+ .SH AUTHOR
+diff --git a/src/cache.c b/src/cache.c
+index cc63e95..fd827bb 100644
+--- a/src/cache.c
++++ b/src/cache.c
+@@ -130,6 +130,7 @@ static void cache_from_repository(repository_t * repository, FILE * file)
+ {
+ 	DIR *dir;
+ 	struct dirent *entry;
++	struct stat entry_stat;
+ 
+ 	assert(repository != NULL && file != NULL);
+ 
+@@ -142,7 +143,8 @@ static void cache_from_repository(repository_t * repository, FILE * file)
+ 	while ((entry = readdir(dir))) {
+ 		if (*entry->d_name == '.')
+ 			continue;
+-		if (entry->d_type != DT_DIR && entry->d_type != DT_UNKNOWN)
++		lstat(entry->d_name, &entry_stat);
++		if(!S_ISDIR(entry_stat.st_mode))
+ 			continue;
+ 		cache_parse_pkgfile(repository, entry->d_name, file);
+ 	}
+diff --git a/src/conf.c b/src/conf.c
+index 987c24d..1bd3509 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -233,6 +233,7 @@ void conf_dump(conf_t * self)
+ 	printf("POST_PKGADD = %s\n", self->post_pkgadd);
+ 	printf("ASK_FOR_UPDATE = %d\n", self->ask_for_update);
+ 	printf("NOT_FOUND_POLICY = %s\n", policies[self->not_found_policy]);
++	printf("VERBOSE = %d\n", self->verbose);
+ 	printf("REPOSITORIES_HIERARCHY = ");
+ 	for (i = 0; i < self->repositories_hierarchy->length; i++)
+ 		printf("%s ",
+diff --git a/src/dependencies.c b/src/dependencies.c
+index 4a684da..bc15471 100644
+--- a/src/dependencies.c
++++ b/src/dependencies.c
+@@ -130,16 +130,15 @@ static inline void dependencies_explode(port_t * port, hash_t * ports_hash,
+ 					      *)port->dependencies->elements[i],
+ 				 dport);
+ 		}
+-		if (dport->status == PRT_NOTINSTALLED &&
++ 		if (dport->status == PRT_NOTINSTALLED &&  
+ 		    (list = dict_get(aliases, dport->name))) {
+ 			for (j = 0; j < list->length; j++) {
+ 				aport = hash_get(ports_hash, list->elements[j]);
+ 				if (aport == NULL)
+ 					continue;
+-				if (aport->status != PRT_NOTINSTALLED) {
+-					dport = aport;
++				dport = aport;
++				if (aport->status != PRT_NOTINSTALLED) 
+ 					break;
+-				}
+ 			}
+ 		}
+ 		list_append(port->dependencies_exploded, dport);
+diff --git a/src/exec.c b/src/exec.c
+index fff6755..56644b5 100644
+--- a/src/exec.c
++++ b/src/exec.c
+@@ -209,3 +209,14 @@ int exec(char *command, char *args[])
+ {
+ 	return exechook2(command, args, stdout_hook, NULL, stderr_hook, NULL);
+ }
++
++int exec2(char *command, char *workdir, char *args[])
++{
++	char *currentdir;
++	int status;
++	currentdir = get_current_dir_name();
++	chdir(workdir);
++	status = exechook2(command, args, stdout_hook, NULL, stderr_hook, NULL);
++	chdir(currentdir);
++	return status;
++}
+diff --git a/src/exec.h b/src/exec.h
+index cbda7b7..ff8b762 100644
+--- a/src/exec.h
++++ b/src/exec.h
+@@ -34,5 +34,6 @@ int execlogp(char *command, char *args[], char **log);
+ int execlog2(char *command, char *args[], char **out_log, char **err_log);
+ int execlog(char *command, char *args[], char **log);
+ int exec(char *command, char *args[]);
++int exec2(char *command, char *workdir, char *args[]);
+ 
+ #endif
+diff --git a/src/hash.c b/src/hash.c
+index 8570596..5cafc43 100644
+--- a/src/hash.c
++++ b/src/hash.c
+@@ -154,6 +154,8 @@ hashiterator_t *hashiterator_new(hash_t *hash)
+ /* 	get_first(self->hash, 0, 0, &self->current_dict,  */
+ /* 		  &self->current_position); */
+ 	self->first = -1;
++	self->current_dict = 0;
++	self->current_position = 0;
+ 	return self;
+ }
+ 
+diff --git a/src/ini.c b/src/ini.c
+index f96b607..b7ea58e 100644
+--- a/src/ini.c
++++ b/src/ini.c
+@@ -29,8 +29,21 @@
+ #include "str.h"
+ #include "ini.h"
+ 
++	
+ // TODO: split from ilenia 
+ 
++static char *eatcomments(char *line)
++{
++ 	char *cptr;
++
++	cptr = strchr(line, '#');
++
++	if (cptr != NULL)
++	line[cptr - line] = 0;
++
++	return line;
++}
++
+ ini_t *ini_new(char *filepath)
+ {
+ 	ini_t *self;
+@@ -226,6 +239,8 @@ extern int ini_load(ini_t * self)
+ 			continue;
+ 		}
+ 
++		eatcomments(line);
++
+ 		if (*line == '[') {
+ 			free(section);
+ 			section = xmalloc(strlen(line) - 1);
+diff --git a/src/local.c b/src/local.c
+index c29f99e..a4ad068 100644
+--- a/src/local.c
++++ b/src/local.c
+@@ -26,6 +26,8 @@
+ #include "memory.h"
+ #include "str.h"
+ #include "local.h"
++#include "file.h"
++#include "exec.h"
+ 
+ repository_t *local_get_repository(driver_t * self, char *supfile,
+ 				   list_t * repositories_hierarchy)
+@@ -70,5 +72,19 @@ repository_t *local_get_repository(driver_t * self, char *supfile,
+ 
+ void local_update(repository_t * repository)
+ {
+-	return;
++	char *updater;
++
++	assert(repository != NULL);
++	
++	updater = xstrdup(repository->path);
++	strappend(&updater, "/.updater.sh");
++	
++	if(!is_file(updater))
++		goto cleanup;
++
++	char *args[] = { "bash", updater, NULL };
++	exec2("/bin/bash", repository->path, args);
++
++  cleanup:
++	free(updater);
+ }
+diff --git a/src/repository.c b/src/repository.c
+index 5fc4a9e..ddc5a9c 100644
+--- a/src/repository.c
++++ b/src/repository.c
+@@ -95,8 +95,6 @@ dict_t *repositories_dict_init(list_t * drivers,
+ 		repository = NULL;
+ 		if (*entry->d_name == '.')
+ 			continue;
+-		if (entry->d_type != DT_UNKNOWN)
+-			continue;
+ 		for (i = 0; i < drivers->length; i++) {
+ 			driver = list_get(drivers, i);
+ 			if ((repository = driver->get_repository(driver,

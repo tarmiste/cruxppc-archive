@@ -1,0 +1,40 @@
+diff --git a/hw/xfree86/os-support/bus/linuxPci.c b/hw/xfree86/os-support/bus/linuxPci.c
+index 263fd8f..fa0fc0a 100644
+--- a/hw/xfree86/os-support/bus/linuxPci.c
++++ b/hw/xfree86/os-support/bus/linuxPci.c
+@@ -471,23 +471,18 @@  xf86MapDomainMemory(int ScreenNum, int Flags, struct pci_device *dev,
+     int fd = -1;
+     pointer addr;
+ 
+-    /*
+-     * We use /proc/bus/pci on non-legacy addresses or if the Linux sysfs
+-     * legacy_mem interface is unavailable.
+-     */
+-    if ((Base > 1024*1024) || ((fd = linuxOpenLegacy(dev, "legacy_mem")) < 0))
+-	return linuxMapPci(ScreenNum, Flags, dev, Base, Size,
+-			   PCIIOC_MMAP_IS_MEM);
+-    else
+-	addr = mmap(NULL, Size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, Base);
+-
+-    if (fd >= 0)
+-	close(fd);
+-    if (addr == NULL || addr == MAP_FAILED) {
+-	perror("mmap failure");
+-	FatalError("xf86MapDomainMem():  mmap() failure\n");
++    if (Base <= 1024*1024) {
++        /* Try legacy_mem (may not be available or implemented) */
++        if ((fd = linuxOpenLegacy(dev, "legacy_mem")) < 0) {
++            addr = mmap(NULL, Size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, Base);
++            close(fd);
++            if (addr && addr != MAP_FAILED)
++                return addr;
++        }
+     }
+-    return addr;
++
++    /* Fall back to old method if legacy_mem fails or Base >= 1M */
++    return linuxMapPci(ScreenNum, Flags, dev, Base, Size, PCIIOC_MMAP_IS_MEM);
+ }
+ 
+ /**
+

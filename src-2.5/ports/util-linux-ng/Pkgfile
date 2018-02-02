@@ -1,0 +1,30 @@
+# Description: Miscellaneous system utilities
+# URL:         http://userweb.kernel.org/~kzak/util-linux-ng/
+# Maintainer:  CRUX System Team, core-ports at crux dot nu
+# Depends on:  e2fsprogs, ncurses, zlib
+# PPC!= footprinti and FHS compliance fix
+
+name=util-linux-ng
+version=2.15
+release=1
+source=(http://www.kernel.org/pub/linux/utils/$name/v2.15/$name-$version.tar.bz2)
+
+build() {
+    cd $name-$version
+    # FHS compliance fix
+    sed -i 's@etc/adjtime@var/lib/hwclock/adjtime@g' \
+	hwclock/hwclock.c
+    ./configure --prefix=/usr \
+                --mandir=/usr/man \
+                --disable-{nls,elvtune,wall} \
+                --enable-{write,rdev,raw,kill}
+    make
+    make DESTDIR=$PKG install
+
+    mkdir -p $PKG/var/lib/hwclock
+    touch $PKG/var/lib/hwclock/adjtime
+    
+    rm -r $PKG/usr/share
+    rm $PKG/sbin/{mkfs.bfs,mkfs.minix,fsck.minix}
+    rm $PKG/usr/man/man8/{fsck.minix,mkfs.bfs,mkfs.minix}.8
+}
